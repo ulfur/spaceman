@@ -10,6 +10,17 @@ func check(condition: bool, message: String) -> void:
 		failures += 1
 		printerr("FAIL: " + message)
 
+func differences(a: Variant, b: Variant, path: String = "state") -> void:
+	if a is Dictionary and b is Dictionary:
+		for key in a:
+			if b.has(key):
+				differences(a[key], b[key], path + "." + str(key))
+	elif a is Array and b is Array:
+		for index in range(mini(a.size(), b.size())):
+			differences(a[index], b[index], path + "[%d]" % index)
+	elif str(a) != str(b) or typeof(a) != typeof(b):
+		print("ROUNDTRIP %s: %s (%d) -> %s (%d)" % [path, str(a), typeof(a), str(b), typeof(b)])
+
 func place(site: RefCounted, kind: String) -> Vector2i:
 	# Choose the nearest legal cell, not a hardcoded solution map.
 	var candidate := Vector2i(-1, -1)
@@ -58,6 +69,8 @@ func _initialize() -> void:
 	var save: String = site.save_json()
 	var restored = Surface.new()
 	check(restored.restore_json(save).ok, "Valid surface save restored")
+	if restored.save_json() != save:
+		differences(site.state, restored.state)
 	check(restored.save_json() == save, "Exact immediate surface save roundtrip")
 	var malformed: Dictionary = JSON.parse_string(save)
 	malformed.resources.metal = -1
