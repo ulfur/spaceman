@@ -21,6 +21,7 @@ var resources: Label
 var journal: RichTextLabel
 var body_list: VBoxContainer
 var operations: VBoxContainer
+var transit: VBoxContainer
 var view: SpaceView
 var travel_dialog: ConfirmationDialog
 var reset_dialog: ConfirmationDialog
@@ -151,11 +152,16 @@ func build_interface() -> void:
 	right_panel.custom_minimum_size.x = 326
 	columns.add_child(right_panel)
 	var scroll := ScrollContainer.new()
+	var right_stack := VBoxContainer.new()
+	right_panel.add_child(right_stack)
 	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
-	right_panel.add_child(scroll)
+	scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	right_stack.add_child(scroll)
 	operations = VBoxContainer.new()
 	operations.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	scroll.add_child(operations)
+	transit = VBoxContainer.new()
+	right_stack.add_child(transit)
 	var objective_panel := PanelContainer.new()
 	root.add_child(objective_panel)
 	objective_label = wrapped("", 15, GOLD)
@@ -215,6 +221,10 @@ func refresh() -> void:
 		heading.text = body.get("name", "Unknown body")
 		subtitle.text = body.get("description", "Awaiting observation.") if body.get("surveyed", false) else "ORBITAL CONTACT  /  Detailed survey pending."
 		if body.get("surveyed", false):
+			if body.kind == "world" and body.water > 0.15:
+				subtitle.text = "An ocean world beneath gathering clouds. " + ("Pioneer life is finding its way." if body.seeded else "Liquid water. An atmosphere. The possibility of life.")
+			if body.kind == "world" and body.temperature > 303.0:
+				subtitle.text = "A world pushed beyond the seed archive's tolerances. The heat is hostile to pioneer life."
 			telemetry.text = "%.1f K   /   %.0f%% SURFACE WATER   /   %.1f%% BIOSPHERE\n%s  ·  %.1f accessible feedstock" % [body.temperature, body.water * 100.0, body.biomass * 100.0, "NO SURFACE INDUSTRY" if body.factory == "" else body.factory.to_upper() + " FACTORY", body.deposit]
 		else:
 			telemetry.text = "Unresolved composition.\nDeploy a survey probe before making plans."
@@ -248,7 +258,7 @@ func refresh_operations(body: Dictionary) -> void:
 			operations.add_child(wrapped("Factory modules carry their own power and automation. They remain here until reclaimed."))
 			action_button("Land factory module", "deploy", sim.state.ship.modules < 1, "Requires one module aboard Spaceship.")
 		else:
-			operations.add_child(wrapped("Factory active. Work continues during travel and stops if local feedstock runs out."))
+			operations.add_child(wrapped("Autonomous industry active. Work continues until local feedstock runs out."))
 			if body.factory == "warming":
 				operations.add_child(label_node("EQUILIBRIUM TARGET", 12, MUTED))
 				var policy := OptionButton.new()
@@ -260,7 +270,7 @@ func refresh_operations(body: Dictionary) -> void:
 				policy.select([288.0, 300.0, 325.0].find(body.target))
 				policy.item_selected.connect(func(index: int): act("policy", [288.0, 300.0, 325.0][index]))
 				operations.add_child(policy)
-				operations.add_child(wrapped("Emissions stop at the target; industry then replaces slow atmospheric losses. Surface temperature follows with a delay.", 14))
+				operations.add_child(wrapped("Emissions stop at the target, then replace atmospheric losses. The surface warms gradually.", 14))
 				if body.target > 303.0:
 					operations.add_child(wrapped("Extreme heat is hostile to the seed archive's organisms.", 14, GOLD))
 			else:
@@ -280,14 +290,15 @@ func refresh_operations(body: Dictionary) -> void:
 	else:
 		operations.add_child(label_node("Departure window", 23))
 		operations.add_child(wrapped("Travel advances every factory and every world. Your memory of a remote world stays at its last local observation."))
-	operations.add_child(HSeparator.new())
+	clear_children(transit)
+	transit.add_child(HSeparator.new())
 	var destination: String = "Vesper" if sim.state.system == "eir" else "Eir"
-	operations.add_child(wrapped("TRANSIT TO %s\n%d years · 18 fuel · 65 propellant\n8 integrity consumed" % [destination.to_upper(), sim.travel_quote().years], 14, GOLD))
+	transit.add_child(wrapped("TRANSIT TO %s\n%d years · 18 fuel · 65 propellant\n8 integrity consumed" % [destination.to_upper(), sim.travel_quote().years], 14, GOLD))
 	var travel := button("Depart for " + destination + " →", request_travel, "Depart")
 	travel.disabled = sim.state.ship.fuel < 18.0 or sim.state.ship.propellant < 65.0 or sim.state.ship.integrity <= 20.0
-	operations.add_child(travel)
+	transit.add_child(travel)
 	if travel.disabled:
-		operations.add_child(wrapped("Insufficient transit reserves. Collect supplies or repair at a local factory.", 13, GOLD))
+		transit.add_child(wrapped("Insufficient transit reserves. Collect supplies or repair at a local factory.", 13, GOLD))
 
 func act(action: String, value: float = 288.0) -> void:
 	var was_complete: bool = sim.state.first_rain

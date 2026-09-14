@@ -41,10 +41,12 @@ jobs:
           godot --headless --path . --editor --import 2>&1 | tee build/import.log
           if grep -E 'SCRIPT ERROR|Parse Error|ERROR:' build/import.log; then exit 1; fi
       - name: Deterministic simulation tests
+        timeout-minutes: 2
         run: |
           godot --headless --path . --script res://tests/test_simulation.gd 2>&1 | tee build/simulation.log
           if grep -E 'SCRIPT ERROR|Parse Error|ERROR:|FAIL:' build/simulation.log; then exit 1; fi
       - name: Render and exercise the expedition interface
+        timeout-minutes: 2
         env:
           LIBGL_ALWAYS_SOFTWARE: "1"
         run: |
