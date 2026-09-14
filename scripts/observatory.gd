@@ -168,7 +168,9 @@ func build_interface() -> void:
 	reset_dialog.ok_button_text = "Begin expedition"
 	var reset_content := stack(reset_dialog)
 	reset_content.custom_minimum_size.x = 430
-	reset_content.add_child(wrapped("This replaces the current expedition and autosave. Changing the seed changes every prospect.", 14))
+	# A wrapping label in an auto-sized Window feeds its initial zero width back
+	# into the minimum height. Fixed lines keep the confirmation bounded.
+	reset_content.add_child(label("This replaces the current expedition and autosave.\nChanging the seed changes every prospect.", 14))
 	reset_content.add_child(label("Neighbourhood seed", 14, CYAN))
 	seed_input = SpinBox.new()
 	seed_input.min_value = 1

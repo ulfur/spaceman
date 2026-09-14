@@ -91,6 +91,7 @@ func run() -> void:
 	click("NewProspects")
 	check(game.reset_dialog.visible, "New seed requires explicit reset confirmation")
 	await capture("13-prospect-new-expedition.png")
+	check(game.reset_dialog.size.y <= 350 and game.reset_dialog.size.x <= 600, "Reset confirmation remains bounded with buttons visible")
 	game.seed_input.value = 1702
 	game.reset_dialog.hide()
 	game.reset_dialog.confirmed.emit()
