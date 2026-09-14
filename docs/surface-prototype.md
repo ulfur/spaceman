@@ -1,5 +1,7 @@
 # First Foothold — implementation notes
 
+These notes describe the milestone-one foundation. [Prospects](prospects.md) adds generated landing regions, planet-dependent solar/deposit quantities and version-three saves; it preserves the construction and production rules below.
+
 ## What to play
 
 Survey Eir III in the orbital view, then enter **Surface operations / 3D**. Do this before deploying a legacy orbital-policy factory. If one is already present in a saved expedition, reclaim it first. The other bodies still use the original orbital abstraction.
@@ -49,4 +51,4 @@ Version-two saves contain the orbital state, site state and fractional year. Ver
 
 ## Not implemented here
 
-Surface module recovery and rebuilding, teardown/relocation, surface-to-ship freight, terrain editing, physical rover orders, survey costs, planetary-scale effects, star-driven radiation events, artificial magnetospheres, native-life detection, procedural systems and first-person control remain future work. The legacy orbital factory remains recoverable; the new surface module stays committed in this slice. These limits should guide playtesting, not be mistaken for simulated hidden systems.
+Surface module recovery and rebuilding, teardown/relocation, surface-to-ship freight, terrain editing, physical rover orders, survey costs, planetary-scale effects, star-driven radiation events, artificial magnetospheres, native-life detection and first-person control remain future work. The legacy orbital factory remains recoverable; the new surface module stays committed in this slice. These limits should guide playtesting, not be mistaken for simulated hidden systems.

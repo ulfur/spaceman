@@ -18,9 +18,16 @@ func show_catalogue(current: RefCounted, selected_id: String) -> void:
 	queue_redraw()
 
 func star_position(id: String) -> Vector2:
-	var origin := Vector2(size.x * 0.48, size.y * 0.48)
-	var scale_value: float = minf(size.x * 0.065, size.y * 0.095)
-	return origin + session.expedition.system_position(id) * Vector2(scale_value, -scale_value)
+	var region := chart_region()
+	return region.get_center() + session.expedition.system_position(id) * Vector2(chart_scale(), -chart_scale())
+
+func chart_region() -> Rect2:
+	# Reserve actual space for the header, side dossiers and instrument dock.
+	return Rect2(286, 145, maxf(200, size.x - 606), maxf(200, size.y - 375))
+
+func chart_scale() -> float:
+	var extent := chart_region().size
+	return minf(extent.x * 0.085, extent.y * 0.094)
 
 func _draw() -> void:
 	draw_rect(Rect2(Vector2.ZERO, size), Color("080f17"))
@@ -30,7 +37,7 @@ func _draw() -> void:
 		return
 	var font := ThemeDB.fallback_font
 	var origin := star_position("eir")
-	var scale_value: float = minf(size.x * 0.065, size.y * 0.095)
+	var scale_value: float = chart_scale()
 	for radius in range(1, 6):
 		draw_arc(origin, scale_value * radius, 0, TAU, 128, Color("192b38"), 1, true)
 		draw_string(font, origin + Vector2(-6, -scale_value * radius + 15), "%d ly" % radius, HORIZONTAL_ALIGNMENT_LEFT, -1, 10, Color("607581"))

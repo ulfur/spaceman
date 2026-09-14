@@ -97,6 +97,21 @@ func _initialize() -> void:
 	check(restored.expedition.state.year == 2412 and restored.fractional_hours == 12 and restored.expedition.state.bodies.eir_iii.factory == "warming", "Migration preserves established progress")
 	check(restored.expedition.state.bodies.size() == 15, "Migration adds unobserved prospects without removing old bodies")
 	check(restored.restore_json(legacy.save_json()).ok, "Original version-one save migrates")
+	var old_orbit = Simulation.new()
+	old_orbit.command("survey", "eir_iii")
+	old_orbit.state.ship.modules -= 1
+	var old_site = Surface.new()
+	old_site.command("land", 10, 10)
+	old_site.command("solar", 11, 10)
+	old_site.advance(25)
+	old_v2 = {"version": 2, "expedition": JSON.parse_string(old_orbit.save_json()), "sites": {"eir_iii": JSON.parse_string(old_site.save_json())}, "fractional_hours": 25, "surface_body": "eir_iii"}
+	migration = restored.restore_json(JSON.stringify(old_v2))
+	check(migration.ok, "Version-two settlement migrates: " + migration.message)
+	check(restored.sites.has("eir_iii") and restored.sites.eir_iii.state.total_hours == 25 and restored.sites.eir_iii.state.structures.size() == 2 and restored.expedition.state.ship.modules == 1, "Migration preserves settlement, clock and allocated module")
+	before = restored.save_json()
+	malformed = JSON.parse_string(before)
+	malformed.version = 3.5
+	check(not restored.restore_json(JSON.stringify(malformed)).ok and restored.save_json() == before, "Fractional save version is rejected without changing the expedition")
 	var dark = Surface.new(555, {"solar_factor": 0.25})
 	var bright = Surface.new(555, {"solar_factor": 1.0})
 	for site in [dark, bright]:

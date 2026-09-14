@@ -108,19 +108,22 @@ func build_interface() -> void:
 	top.add_child(clock)
 	resources = label("", 14)
 	top.add_child(resources)
-	var left := stack(area(Control.PRESET_TOP_LEFT, Vector4(28, 154, 267, 582)))
+	var left_scroll := ScrollContainer.new()
+	left_scroll.name = "AssessmentScroll"
+	left_scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	area(Control.PRESET_LEFT_WIDE, Vector4(28, 150, 267, -220)).add_child(left_scroll)
+	var left := stack(left_scroll)
+	left.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	left.add_child(label("THE LONG VIEW", 12, AMBER))
-	left.add_child(wrapped("A star is a promise.\nAn observation is a reason to believe it.", 21))
-	left.add_child(wrapped("Select a star on the chart. Spend instrument time before committing years of flight.", 14, MUTED))
+	left.add_child(wrapped("Observe first.\nCommit years later.", 21))
+	left.add_child(wrapped("Select a star. Spend instrument time to investigate its possibilities.", 14, MUTED))
 	left.add_child(label("TRANSIT ESTIMATE", 12, AMBER))
 	route = wrapped("", 15)
 	left.add_child(route)
 	left.add_child(label("ASSESSMENT", 12, AMBER))
 	decision = wrapped("", 14, CYAN)
 	left.add_child(decision)
-	var right := stack(area(Control.PRESET_TOP_RIGHT, Vector4(-317, 150, -28, -270)))
-	# Explicit height because this area is top anchored rather than vertically stretched.
-	right.get_parent().offset_bottom = 592
+	var right := stack(area(Control.PRESET_RIGHT_WIDE, Vector4(-317, 150, -28, -220)))
 	title = label("", 28)
 	right.add_child(title)
 	var scroll := ScrollContainer.new()
@@ -179,7 +182,7 @@ func select_system(id: String) -> void:
 func refresh() -> void:
 	map.show_catalogue(session, selected)
 	var ship: Dictionary = session.expedition.state.ship
-	clock.text = "BRAINCAST 01   /   YEAR %d + %d h   /   NEIGHBOURHOOD %d   /   CURRENT SYSTEM: %s" % [session.expedition.state.year, session.fractional_hours, session.prospects.state.seed, session.expedition.state.system.to_upper()]
+	clock.text = "BRAINCAST 01   /   YEAR %d + %d h   /   NEIGHBOURHOOD %d   /   CURRENT SYSTEM: %s" % [session.expedition.state.year, session.fractional_hours, session.prospects.state.seed, system_name(session.expedition.state.system)]
 	resources.text = "REACTOR FUEL  %.2f     /     PROPELLANT  %.1f     /     ALLOY  %.1f     /     INTEGRITY  %.1f%%     /     MODULES ABOARD  %d" % [ship.fuel, ship.propellant, ship.alloy, ship.integrity, ship.modules]
 	var data: Dictionary = session.prospects.evidence(selected)
 	title.text = selected.to_upper() if data.is_empty() else data.planet_name.to_upper()
@@ -223,7 +226,7 @@ func assessment(data: Dictionary) -> String:
 		return "A star and a candidate. Their separation—and the planet's received energy—remain uncertain."
 	var text := "Moderate exposure candidate. Atmosphere and radiation still matter."
 	if data.flux_high < 0.6:
-		text = "A dim orbit. Expect lower solar output and a greater power-infrastructure burden."
+		text = "A dim orbit. More arrays are needed to support the same loads."
 	elif data.flux_low > 1.3:
 		text = "Strong irradiation. Useful energy does not establish exposed-life viability."
 	if data.get("activity_band", "") == "HIGH":
@@ -231,6 +234,12 @@ func assessment(data: Dictionary) -> String:
 	if data.has("ice_factor") and data.ice_factor < 0.4:
 		text += "\n\nSparse accessible ice. A refuge's initial water will not last indefinitely."
 	return text
+
+func system_name(id: String) -> String:
+	for definition in session.expedition.scenario.systems:
+		if definition.id == id:
+			return definition.name.to_upper()
+	return id.to_upper()
 
 func latest_observation(data: Dictionary) -> String:
 	var latest: Dictionary = {}
@@ -253,7 +262,7 @@ func observe(method: String) -> void:
 
 func request_travel() -> void:
 	var quote: Dictionary = session.expedition.travel_quote(selected)
-	travel_dialog.dialog_text = "Destination: %s\n%.2f light years; %d years pass everywhere.\nCost: %.1f fuel, %.1f propellant, %.1f integrity.\n\n%s\n\nLocal industry keeps working. Surface modules remain committed. Arrival does not establish habitability." % [selected.to_upper(), quote.distance_ly, quote.years, quote.fuel_cost, quote.propellant_cost, quote.wear, route.text]
+	travel_dialog.dialog_text = "Destination: %s\n%.2f light years; %d years pass everywhere.\nCost: %.1f fuel, %.1f propellant, %.1f integrity.\n\n%s\n\nLocal industry keeps working. Surface modules remain committed. Arrival does not establish habitability." % [system_name(selected), quote.distance_ly, quote.years, quote.fuel_cost, quote.propellant_cost, quote.wear, route.text]
 	travel_dialog.popup_centered(Vector2i(580, 400))
 
 func travel() -> void:

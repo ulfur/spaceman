@@ -28,4 +28,4 @@ Before review: run legacy and new simulation tests, malformed-save checks, share
 
 ## After playtesting this build
 
-First ask whether surveying, choosing a site, diagnosing a bottleneck and expanding are enjoyable. Fix legibility and pacing before adding more structures. Then replace authored distant-world certainty with evidence and make the star/planet model drive the next set of decisions. Do not inflate scope by adding a button for every idea in the science document.
+Ask whether scouting changes the destination you choose, whether a dim or ice-poor region changes your construction plan, and whether diagnosing a bottleneck is enjoyable. Fix legibility and pacing before adding more structures. The next physical models should connect measured environments to intervention costs and biological outcomes. Do not inflate scope by adding a button for every idea in the science document.

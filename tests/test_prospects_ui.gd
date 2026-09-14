@@ -66,6 +66,7 @@ func run() -> void:
 	click("Observe_probe")
 	check(session.site_available(chosen + "_b"), "Local probe opens new surface")
 	check("Atmospheric column" in game.dossier.text, "Dossier exposes local shielding context")
+	game.find_child("DossierScroll", true, false).scroll_vertical = 10000
 	await capture("10-prospect-local-probe.png")
 	root.size = Vector2i(1100, 760)
 	await capture("11-prospect-compact.png")
@@ -82,6 +83,17 @@ func run() -> void:
 	await process_frame
 	game = current_scene
 	check(game.sim.state.system == chosen and game.selected == chosen + "_b", "Orbital view stays in generated system")
+	click("Prospects")
+	await process_frame
+	await process_frame
+	game = current_scene
+	click("NewProspects")
+	check(game.reset_dialog.visible, "New seed requires explicit reset confirmation")
+	await capture("13-prospect-new-expedition.png")
+	game.seed_input.value = 1702
+	game.reset_dialog.hide()
+	game.reset_dialog.confirmed.emit()
+	check(session.prospects.state.seed == 1702 and session.expedition.state.system == "eir", "Confirmed reset changes neighbourhood and resets expedition")
 	print("Prospects UI: %d failures" % failures)
 	game.queue_free()
 	await process_frame

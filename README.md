@@ -70,7 +70,7 @@ godot --path . --script res://tests/test_surface_ui.gd -- --smoke
 godot --path . --script res://tests/test_prospects_ui.gd -- --smoke
 ```
 
-The last command needs a display and writes screenshots to ignored `build/`. On a Linux CI machine, prefix it with `xvfb-run -a`. Smoke mode bypasses player saves.
+The last three commands need a display and write screenshots to ignored `build/`. On a Linux CI machine, prefix them with `xvfb-run -a`. Smoke mode bypasses player saves.
 
 ## Structure
 
@@ -92,7 +92,7 @@ The last command needs a display and writes screenshots to ignored `build/`. On 
 
 ## Scope
 
-This is an early gameplay prototype. It includes two authored systems, three bodies, warming and mining factories, recovery and replacement, repairs, lifeseeding, stale remote observations, event history, and versioned saves.
+This is an early gameplay prototype. It includes two authored systems plus six generated prospects, fifteen bodies, spatial surface industry, distant observing programmes and local probes. The original warming/mining factories, recovery and replacement, repairs, lifeseeding, stale remote observations and event history remain available alongside versioned saves.
 
 Climate and industrial quantities are deliberately simplified. This is not a physical climate or propulsion solver. The globe is a procedural shader; each 3D sector is a bounded region, not a full traversable planet. Its rovers illustrate activity rather than performing physical pathfinding. Prospects generates a small neighbourhood, not a full galaxy. Quantitative radiation hazards, exposed-life viability on generated worlds, walking robots, autonomous branching policies, detailed ship construction, upgrades, sound, and multiplayer remain future work.
 
