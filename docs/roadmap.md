@@ -5,14 +5,20 @@ This is a sequence of playable proofs, not a promise of dates. Each stage must b
 | Stage | Deliverable | Exit test |
 | --- | --- | --- |
 | 0 · First Rain — existing | Two systems, persistent orbital industry, departure/return, saves, CI and exports. | A player can leave a frozen world, resupply elsewhere, return to rain and seed life. This proves continuity, not yet compelling open-ended play. |
-| 1 · First Foothold — current prototype | One actual 3D surface sector: inspect terrain, survey deposits, choose a module site, build power/extraction/refining/fabrication and maintain an enclosed microbial refuge. Pause and variable speed, persistent sites, compact spatial HUD. | Placement affects access and throughput; a power or feedstock bottleneck is visible and fixable; finite resources constrain growth; save/load and a long absence preserve the same simulation. |
-| 2 · Prospects | Several generated candidate systems under common rules; distant evidence and uncertainty; stellar spectrum, age/activity and orbital exposure; local probes improve knowledge. | New seeds change the expedition without a new mission script. Observation can change where the player chooses to go. Industry-only worlds and abandoned prospects are valid choices. |
+| 1 · First Foothold — implemented | An actual 3D surface sector: inspect terrain, survey deposits, choose a module site, build power/extraction/refining/fabrication and maintain an enclosed microbial refuge. Pause and variable speed, persistent sites, compact spatial HUD. | Placement affects access and throughput; a power or feedstock bottleneck is visible and fixable; finite resources constrain growth; save/load and a long absence preserve the same simulation. |
+| 2 · Prospects — current milestone | Six generated candidate systems under common rules; distant evidence and uncertainty; stellar class, qualitative age/activity and orbital exposure; local probes unlock playable regions with different solar yields and deposits. | New seeds change the expedition without a new mission script. Observation can change where the player chooses to go. Industry-only worlds and abandoned prospects are valid choices. |
 | 3 · Planetary engineering | Regional climate, gas and water inventories, gravity, heat transport, photon/particle shielding and biological requirements. Pilot interventions with costs, throughput and uncertainty. | A plan succeeds or fails for inspectable physical reasons. The same process behaves differently on different worlds. A refuge is useful without claiming global habitability. |
 | 4 · The long return | Ship resupply from the spatial industry model; module recovery/rebuilding, maintenance, logistics, standing orders, delayed remote reports and scalable unattended integration. | A century-long absence produces an explainable industrial/ecological history. Loaded and unloaded sites obey consistent accounting. |
 | 5 · A world worth inhabiting | Larger navigable regions, stronger terrain/material/lighting art, environmental changes, sound and ecological variation. | The playable scene—not a concept painting—conveys place and change at an acceptable measured frame rate. |
 | 6 · Embodiment — distant future | Inhabit a manufactured robot or vehicle in the same persistent world; first-person work and exploration. | Direct control operates the same machinery and inventory as strategic orders. No separate decorative first-person game. |
 
-## Current scope lock: First Foothold
+## Current scope lock: Prospects
+
+The [Prospects implementation](prospects.md) connects scouting to destination choice and the existing surface game. Keep the generator bounded to six candidates plus the reference systems. Verify observations cannot reveal unmeasured fields or reroll truth, a quoted trip charges the actual cost, all sites advance during scans and travel, and old saves preserve player progress.
+
+Planetary engineering is next. Quantitative radiation exposure, atmosphere/climate dynamics and exposed biospheres are not silently simulated by this milestone. More data rows are useful only if they lead to inspectable decisions and effects.
+
+## First Foothold foundation
 
 Build a bounded surface sector, not an entire planet. The minimum useful chain is module → extraction → refining → fabrication, supported by power and a service network. An enclosed pioneer refuge gives those outputs a purpose. Construction takes time. Deposits run out. Losing life support has consequences.
 

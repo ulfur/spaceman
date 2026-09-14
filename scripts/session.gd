@@ -125,7 +125,11 @@ func restore_json(contents: String) -> Dictionary:
 	if parser.parse(contents) != OK or not parser.data is Dictionary:
 		return {"ok": false, "message": "Invalid save. Current expedition preserved."}
 	var candidate: Dictionary = parser.data
-	var version: Variant = candidate.get("version")
+	# JSON parses numbers as floats; Array membership distinguishes 3.0 from 3.
+	var raw_version: Variant = candidate.get("version")
+	if not (raw_version is float or raw_version is int) or not is_finite(float(raw_version)) or raw_version != floor(raw_version):
+		return {"ok": false, "message": "Unsupported save version."}
+	var version := int(raw_version)
 	if version not in [1, 2, 3]:
 		return {"ok": false, "message": "Unsupported save version."}
 	var orbital: Variant = candidate if version == 1 else candidate.get("expedition")

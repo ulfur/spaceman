@@ -66,6 +66,7 @@ jobs:
           xvfb-run -a godot --path . --rendering-method gl_compatibility --audio-driver Dummy --script res://tests/test_surface_ui.gd -- --smoke 2>&1 | tee build/surface-ui.log
           if grep -E 'SCRIPT ERROR|Parse Error|ERROR:|FAIL:' build/surface-ui.log; then exit 1; fi
       - name: Generated prospects and observation tests
+        if: ${{ !cancelled() }}
         timeout-minutes: 2
         run: |
           godot --headless --path . --script res://tests/test_prospects.gd 2>&1 | tee build/prospects.log

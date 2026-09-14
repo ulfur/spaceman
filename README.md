@@ -8,6 +8,8 @@ He is a braincast of the original commander: a digital mind adapted to life as a
 
 **First Foothold** adds a real 3D industrial sector: survey terrain, land a module, extract ore and ice, build power/refining/fabrication, and maintain an enclosed pioneer refuge. It shares the expedition clock and save, while the orbital model remains deliberately simple.
 
+**Prospects** adds six generated systems to scout and visit. Buy orbit fits, spectra and stellar activity observations, compare dated evidence and travel reserves, then arrive, probe and open a new 3D region. Its sunlight and resource richness change actual factory output and deposits. See [Prospects controls and model](docs/prospects.md).
+
 The broader goal spans a galactic map, star systems, planetary engineering, RTS-style surface industry, and eventually first-person robot embodiment. See [Game direction](docs/vision.md) for that vision and the distinction between current features and future work.
 
 The updated concept is an open-ended expedition simulation: observe distant systems, choose where to travel, develop an industrial plan, and discover the consequences. [Science and simulation](docs/science-and-simulation.md) records scientific constraints and speculative engineering; [Visual direction](docs/visual-direction.md) translates the concept-art direction into runtime goals. The [development roadmap](docs/roadmap.md) sets the order and acceptance tests for playable milestones.
@@ -27,6 +29,10 @@ The game starts paused. In orbit, use **+1 / +10 / +50 yr** to advance time. **F
 **Survey Eir III → Surface operations / 3D**, before deploying the legacy orbital-policy factory. If your existing save already has one there, reclaim it first. Land the module near ore and ice, then use the bottom toolbelt to build. **Space** pauses; **1× / 10× / 50×** set simulated hours per second. **Middle-drag** pans, **wheel** zooms and **Q/E** rotate. **Escape** returns to orbit, paused. See [surface controls and model boundaries](docs/surface-prototype.md).
 
 A useful first production chain is solar → ore extractor + ice well → refinery → fabricator → refuge. Add enough solar capacity and inspect machine status when something stalls. Deposits and life-support supplies are finite: a refuge is not automatically sustainable forever. Module recovery and surface freight are not yet implemented in this slice.
+
+### Scout another system
+
+Open **Prospects / observatory** from orbit. Click a star, run an **Orbit fit**, **Spectrum**, and **Activity watch** as useful, then review **Commit transit**. On arrival, a **Local probe** unlocks that planet's **Surface operations / 3D**. **Local orbit** exposes its industrial companion and the original ship-supply mechanics. Observation consumes time and fuel; a probe also consumes alloy. New expeditions can use a chosen neighbourhood seed. Saves now use version three and migrate both earlier formats.
 
 ### Your first expedition
 
@@ -58,8 +64,10 @@ Local verification:
 godot --headless --path . --editor --import
 godot --headless --path . --script res://tests/test_simulation.gd
 godot --headless --path . --script res://tests/test_surface.gd
+godot --headless --path . --script res://tests/test_prospects.gd
 godot --path . --script res://tests/test_ui.gd -- --smoke
 godot --path . --script res://tests/test_surface_ui.gd -- --smoke
+godot --path . --script res://tests/test_prospects_ui.gd -- --smoke
 ```
 
 The last command needs a display and writes screenshots to ignored `build/`. On a Linux CI machine, prefix it with `xvfb-run -a`. Smoke mode bypasses player saves.
@@ -75,6 +83,8 @@ The last command needs a display and writes screenshots to ignored `build/`. On 
 | `scripts/surface_simulation.gd` | Surface resources, construction, power, service graph and refuge |
 | `scripts/surface.gd`, `scripts/surface_world.gd` | Spatial controls/HUD and procedural 3D rendering |
 | `data/surface.json` | Surface kit inventories and construction recipes |
+| `scripts/prospects.gd`, `data/prospects.json` | Generated worlds, observation evidence and programme costs |
+| `scripts/observatory.gd`, `scripts/prospect_map.gd` | Distant scouting, route review and destination selection |
 | `scripts/space_view.gd` | Star chart and procedural viewport |
 | `shaders/planet.gdshader` | Rotating globe; ice, water, clouds, and life reflect state |
 | `tests/` | Simulation invariants and rendered expedition walkthrough |
@@ -84,6 +94,6 @@ The last command needs a display and writes screenshots to ignored `build/`. On 
 
 This is an early gameplay prototype. It includes two authored systems, three bodies, warming and mining factories, recovery and replacement, repairs, lifeseeding, stale remote observations, event history, and versioned saves.
 
-Climate and industrial quantities are deliberately simplified. This is not a physical climate or propulsion solver. The globe is a procedural shader; the new 3D sector is a bounded region, not a full traversable planet. Its rovers illustrate activity rather than performing physical pathfinding. Walking robots, a procedural galaxy, star-driven radiation, autonomous branching policies, detailed ship construction, upgrades, sound, and multiplayer are future work.
+Climate and industrial quantities are deliberately simplified. This is not a physical climate or propulsion solver. The globe is a procedural shader; each 3D sector is a bounded region, not a full traversable planet. Its rovers illustrate activity rather than performing physical pathfinding. Prospects generates a small neighbourhood, not a full galaxy. Quantitative radiation hazards, exposed-life viability on generated worlds, walking robots, autonomous branching policies, detailed ship construction, upgrades, sound, and multiplayer remain future work.
 
 There is no automatic website deployment and no third-party telemetry.
