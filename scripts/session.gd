@@ -2,11 +2,13 @@ extends RefCounted
 ## Shared expedition and surface clock. Views never own persistent physical state.
 const Simulation = preload("res://scripts/simulation.gd")
 const Surface = preload("res://scripts/surface_simulation.gd")
+const Prospects = preload("res://scripts/prospects.gd")
 const HOURS_PER_YEAR := 8766
 const SAVE_PATH := "user://expedition.json"
 static var shared: RefCounted
 
-var expedition = Simulation.new()
+var prospects = Prospects.new(int(Prospects.CONFIG.default_seed))
+var expedition = Simulation.new(prospects.definitions())
 var sites: Dictionary = {}
 var fractional_hours := 0
 var surface_body := "eir_iii"
@@ -17,23 +19,55 @@ static func get_shared() -> RefCounted:
 		shared = load("res://scripts/session.gd").new()
 	return shared
 
-func reset() -> void:
-	expedition.reset()
+func reset(seed: int = 1701) -> void:
+	prospects = Prospects.new(clampi(seed, 1, 999999))
+	var fresh = Simulation.new(prospects.definitions())
+	expedition.scenario = fresh.scenario
+	expedition.state = fresh.state
 	sites.clear()
 	fractional_hours = 0
 	surface_body = "eir_iii"
 
 func site_available(id: String) -> bool:
-	# One authored landing region in this slice, not generic terrain for every body.
 	var body: Dictionary = expedition.local_body(id)
-	return id == "eir_iii" and not body.is_empty() and body.surveyed and body.factory == ""
+	if body.is_empty() or not body.surveyed or body.factory != "":
+		return false
+	return id == "eir_iii" or (body.get("generated", false) and body.kind == "world" and prospects.state.records[body.system].has("probe"))
 
 func surface_for(id: String) -> RefCounted:
 	if not site_available(id):
 		return null
 	if not sites.has(id):
-		sites[id] = Surface.new(int(Surface.CONFIG.seed))
+		var context: Dictionary = prospects.surface_context(id)
+		sites[id] = Surface.new(int(context.get("seed", Surface.CONFIG.seed)), context)
 	return sites[id]
+
+func default_body() -> String:
+	for definition in expedition.scenario.bodies:
+		if definition.system == expedition.state.system:
+			return definition.id
+	return "eir_iii"
+
+func elapsed_hours() -> int:
+	return (int(expedition.state.year) - int(expedition.scenario.start_year)) * HOURS_PER_YEAR + fractional_hours
+
+func observe(id: String, method: String) -> Dictionary:
+	var allowed: Dictionary = prospects.can_observe(id, method, expedition.state.system)
+	if not allowed.ok:
+		return allowed
+	var cost: Dictionary = Prospects.CONFIG.observations[method]
+	var ship: Dictionary = expedition.state.ship
+	if ship.fuel < cost.fuel or ship.alloy < cost.alloy:
+		return {"ok": false, "message": "Observation needs %.2f reactor fuel and %.1f alloy." % [cost.fuel, cost.alloy]}
+	ship.fuel -= cost.fuel
+	ship.alloy -= cost.alloy
+	var distance: float = expedition.system_position(expedition.state.system).distance_to(expedition.system_position(id))
+	advance_hours(int(cost.hours))
+	var outcome: Dictionary = prospects.observe(id, method, expedition.state.system, elapsed_hours(), distance)
+	if method == "probe":
+		expedition.command("survey", id + "_b")
+	expedition.record(outcome.message)
+	return outcome
 
 func surface_command(action: String, x: int = -1, z: int = -1) -> Dictionary:
 	var site = surface_for(surface_body)
@@ -44,10 +78,13 @@ func surface_command(action: String, x: int = -1, z: int = -1) -> Dictionary:
 	var outcome: Dictionary = site.command(action, x, z)
 	if outcome.ok and action in ["land", "seed"]:
 		expedition.state.ship.modules -= 1
-		expedition.record("Eir III: surface seed module landed. Spatial industry commissioned.", surface_body)
+		expedition.record("%s: surface seed module landed. Spatial industry commissioned." % expedition.state.bodies[surface_body].name, surface_body)
 	return outcome
 
 func command(action: String, id: String = "", value: float = 288.0) -> Dictionary:
+	var body: Dictionary = expedition.local_body(id)
+	if action == "survey" and not body.is_empty() and body.get("generated", false) and body.kind == "world":
+		return observe(body.system, "probe")
 	if action == "deploy" and sites.has(id) and sites[id].state.landed:
 		return {"ok": false, "message": "This region already has a surface module. Use Surface operations."}
 	var before: int = expedition.state.year
@@ -80,7 +117,7 @@ func save_json() -> String:
 	var saved_sites: Dictionary = {}
 	for id in sites:
 		saved_sites[id] = JSON.parse_string(sites[id].save_json())
-	return JSON.stringify({"version": 2, "expedition": JSON.parse_string(expedition.save_json()),
+	return JSON.stringify({"version": 3, "prospects": JSON.parse_string(prospects.save_json()), "expedition": JSON.parse_string(expedition.save_json()),
 		"sites": saved_sites, "fractional_hours": fractional_hours, "surface_body": surface_body}, "\t", true, true)
 
 func restore_json(contents: String) -> Dictionary:
@@ -88,43 +125,72 @@ func restore_json(contents: String) -> Dictionary:
 	if parser.parse(contents) != OK or not parser.data is Dictionary:
 		return {"ok": false, "message": "Invalid save. Current expedition preserved."}
 	var candidate: Dictionary = parser.data
-	var staged = Simulation.new()
+	var version: Variant = candidate.get("version")
+	if version not in [1, 2, 3]:
+		return {"ok": false, "message": "Unsupported save version."}
+	var orbital: Variant = candidate if version == 1 else candidate.get("expedition")
+	if not orbital is Dictionary:
+		return {"ok": false, "message": "Missing expedition state."}
+	var remainder: Variant = 0 if version == 1 else candidate.get("fractional_hours")
+	if not (remainder is float or remainder is int) or not is_finite(float(remainder)) or remainder != floor(remainder) or remainder < 0 or remainder >= HOURS_PER_YEAR:
+		return {"ok": false, "message": "Invalid save clock."}
+	var year: Variant = orbital.get("year")
+	if not (year is float or year is int) or not is_finite(float(year)) or year != floor(year) or year < 2400 or year > 1000000000:
+		return {"ok": false, "message": "Invalid expedition year."}
+	var now: int = (int(year) - 2400) * HOURS_PER_YEAR + int(remainder)
+	var staged_prospects = Prospects.new(int(Prospects.CONFIG.default_seed))
+	if version == 3:
+		if not candidate.get("prospects") is Dictionary:
+			return {"ok": false, "message": "Missing prospect evidence."}
+		var restored: Dictionary = staged_prospects.restore_json(JSON.stringify(candidate.prospects), now)
+		if not restored.ok:
+			return restored
+	var staged = Simulation.new(staged_prospects.definitions())
+	if version == 3:
+		var restored: Dictionary = staged.restore_json(JSON.stringify(orbital))
+		if not restored.ok:
+			return restored
+	else:
+		# Validate the original three-body schema before extending old expeditions.
+		var legacy = Simulation.new()
+		var restored: Dictionary = legacy.restore_json(JSON.stringify(orbital))
+		if not restored.ok:
+			return restored
+		var all_bodies: Dictionary = staged.state.bodies
+		all_bodies.merge(legacy.state.bodies, true)
+		staged.state = legacy.state
+		staged.state.bodies = all_bodies
 	var staged_sites: Dictionary = {}
-	var hours := 0
-	if candidate.get("version") == 1:
-		var legacy: Dictionary = staged.restore_json(contents)
-		if not legacy.ok:
-			return legacy
-	elif candidate.get("version") == 2:
-		if not candidate.get("expedition") is Dictionary or not candidate.get("sites") is Dictionary:
-			return {"ok": false, "message": "Incomplete save. Current expedition preserved."}
-		var remainder: Variant = candidate.get("fractional_hours")
-		if not (remainder is float or remainder is int) or not is_finite(float(remainder)) or remainder != floor(remainder) or remainder < 0 or remainder >= HOURS_PER_YEAR:
-			return {"ok": false, "message": "Invalid save clock. Current expedition preserved."}
-		if candidate.get("surface_body") != "eir_iii":
-			return {"ok": false, "message": "Unknown surface region. Current expedition preserved."}
-		hours = int(remainder)
-		var orbital: Dictionary = staged.restore_json(JSON.stringify(candidate.expedition))
-		if not orbital.ok:
-			return orbital
+	var selected_body: Variant = "eir_iii" if version == 1 else candidate.get("surface_body")
+	if not selected_body is String or not staged.state.bodies.has(selected_body):
+		return {"ok": false, "message": "Unknown surface region."}
+	if version != 1:
+		if not candidate.get("sites") is Dictionary:
+			return {"ok": false, "message": "Missing surface sites."}
 		for id in candidate.sites:
-			if id != "eir_iii" or not candidate.sites[id] is Dictionary:
-				return {"ok": false, "message": "Unknown surface site. Current expedition preserved."}
-			var site = Surface.new()
+			if not staged.state.bodies.has(id) or not candidate.sites[id] is Dictionary:
+				return {"ok": false, "message": "Unknown surface site."}
+			var body: Dictionary = staged.state.bodies[id]
+			if body.kind != "world" or not body.surveyed or (id != "eir_iii" and not staged_prospects.state.records[body.system].has("probe")):
+				return {"ok": false, "message": "Surface site lacks local probe evidence."}
+			var context: Dictionary = staged_prospects.surface_context(id)
+			var site = Surface.new(int(context.get("seed", Surface.CONFIG.seed)), context)
 			var restored: Dictionary = site.restore_json(JSON.stringify(candidate.sites[id]))
 			if not restored.ok:
 				return restored
-			if not staged.state.bodies[id].surveyed or (site.state.landed and staged.state.bodies[id].factory != ""):
-				return {"ok": false, "message": "Conflicting factory allocation. Current expedition preserved."}
+			if site.state.total_hours > now or (site.state.landed and body.factory != "") or site.state.seed != int(context.get("seed", Surface.CONFIG.seed)):
+				return {"ok": false, "message": "Conflicting site clock, seed or factory allocation."}
+			if absf(site.state.get("solar_factor", 1.0) - context.get("solar_factor", 1.0)) > 0.00000001:
+				return {"ok": false, "message": "Surface solar context conflicts with its planet."}
 			staged_sites[id] = site
-	else:
-		return {"ok": false, "message": "Unsupported save version. Current expedition preserved."}
-	# Commit only after every component validates; preserve the UI's simulation reference.
+	# No live state is replaced until all components validate.
+	expedition.scenario = staged.scenario
 	expedition.state = staged.state
+	prospects = staged_prospects
 	sites = staged_sites
-	fractional_hours = hours
-	surface_body = "eir_iii"
-	return {"ok": true, "message": "Expedition and surface installations restored."}
+	fractional_hours = int(remainder)
+	surface_body = selected_body
+	return {"ok": true, "message": "Expedition, prospect evidence and surface installations restored."}
 
 func load_disk() -> Dictionary:
 	initialized = true

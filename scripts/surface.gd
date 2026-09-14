@@ -130,7 +130,7 @@ func build_interface() -> void:
 	header.add_child(title)
 	header.add_child(button("↑  ORBIT  ·  ESC", return_to_orbit, "ReturnOrbit"))
 	header.add_child(button("SAVE", save_game, "SaveSurface"))
-	stack.add_child(label("EIR III     /     LANDING SECTOR 01     /     SYNTHETIC PRESENCE", 12, CYAN))
+	stack.add_child(label(session.expedition.state.bodies[session.surface_body].name.to_upper() + "     /     LANDING SECTOR 01     /     SYNTHETIC PRESENCE", 12, CYAN))
 	inventory = label("", 15)
 	stack.add_child(inventory)
 	var left := margin_box(Control.PRESET_TOP_LEFT, Vector4(28, 148, 281, 310))
@@ -271,6 +271,8 @@ func refresh() -> void:
 	var goods: Dictionary = state.resources
 	inventory.text = "ORE  %.1f     /     METAL  %.1f     /     WATER  %.1f     /     COMPONENTS  %.1f     /     MODULES ABOARD  %d" % [goods.ore, goods.metal, goods.water, goods.components, session.expedition.state.ship.modules]
 	power.text = "POWER  %.1f / %.1f kW\n%d installations linked" % [report.power_demand, report.power_supply, report.connected_count]
+	if state.has("solar_factor"):
+		power.text += "\nSolar yield factor  %.2f×" % state.solar_factor
 	power.add_theme_color_override("font_color", AMBER if report.power_demand > report.power_supply else CYAN)
 	if not state.landed:
 		objective.text = "Find your foothold."

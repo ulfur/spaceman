@@ -36,7 +36,7 @@ func _ready() -> void:
 	if not session.initialized:
 		var loaded: Dictionary = session.load_disk()
 		status.text = loaded.message
-	selected = "eir_iii" if sim.state.system == "eir" else "vesper_b"
+	selected = session.default_body()
 	refresh()
 
 func box(color: Color, border: Color = Color("293f4b")) -> StyleBoxFlat:
@@ -117,7 +117,8 @@ func build_interface() -> void:
 	columns.add_child(left)
 	left.add_child(label_node("NAVIGATION", 12, MUTED))
 	left.add_child(button("Orbital observation", func(): chart = false; refresh(), "Orbit"))
-	left.add_child(button("Interstellar chart", func(): chart = true; refresh(), "Chart"))
+	left.add_child(button("Prospects / observatory →", open_prospects, "Prospects"))
+	left.add_child(button("First Rain route", show_legacy_chart, "Chart"))
 	left.add_child(HSeparator.new())
 	left.add_child(label_node("LOCAL BODIES", 12, MUTED))
 	body_list = VBoxContainer.new()
@@ -234,6 +235,10 @@ func refresh() -> void:
 				telemetry.text = "%.1f K   /   SPATIAL INDUSTRY ACTIVE\n%d installations · protected local culture, not planetary terraforming" % [body.temperature, session.sites[selected].state.structures.size()]
 		else:
 			telemetry.text = "Unresolved composition.\nDeploy a survey probe before making plans."
+	if body.get("generated", false) and body.kind == "world" and body.surveyed:
+		var known: Dictionary = session.prospects.evidence(body.system)
+		subtitle.text = "LOCAL PROBE  /  Climate and native life unresolved. Globe is a schematic reconstruction."
+		telemetry.text = "IRRADIANCE %.2f–%.2f EARTH  /  GRAVITY %.2f g\nPRESSURE %.2f bar  /  MAGNETIC FIELD %.2f Earth · geometry unresolved" % [known.flux_low, known.flux_high, known.gravity, known.pressure, known.field_earth]
 	view.show_body(body, chart, state.system)
 	refresh_operations(body)
 	journal.clear()
@@ -263,6 +268,8 @@ func refresh_operations(body: Dictionary) -> void:
 		if not body.surveyed:
 			operations.add_child(wrapped("Characterise resources, climate, and the possibility of a living future."))
 			action_button("Survey body", "survey")
+		elif body.get("generated", false) and body.kind == "world":
+			operations.add_child(wrapped("The local probe has mapped a candidate landing region. Use the prospect dossier to assess illumination, radiation evidence and resources. Global interventions are a later milestone.", 14))
 		elif body.factory == "":
 			var has_surface: bool = session.sites.has(selected) and session.sites[selected].state.landed
 			if has_surface:
@@ -293,7 +300,7 @@ func refresh_operations(body: Dictionary) -> void:
 				action_button("Repair ship  /  2 yr", "repair", sim.state.ship.alloy < 10.0 or sim.state.ship.integrity >= 100.0, "Costs 10 alloy; restores up to 25 integrity.")
 				operations.add_child(wrapped("Build: 20 alloy + 3 fuel\nRepair: 10 alloy → +25 integrity", 13))
 			action_button("Reclaim factory & stores", "reclaim")
-		if body.surveyed and body.kind == "world":
+		if body.surveyed and body.kind == "world" and not body.get("generated", false):
 			operations.add_child(HSeparator.new())
 			if body.seeded:
 				operations.add_child(wrapped("Pioneer life introduced. Advance time to observe its growth—or decline.", 14, TEAL))
@@ -306,20 +313,21 @@ func refresh_operations(body: Dictionary) -> void:
 	clear_children(transit)
 	transit.add_child(HSeparator.new())
 	var destination: String = "Vesper" if sim.state.system == "eir" else "Eir"
-	transit.add_child(wrapped("TRANSIT TO %s\n%d years · 18 fuel · 65 propellant\n8 integrity consumed" % [destination.to_upper(), sim.travel_quote().years], 14, GOLD))
+	var quote: Dictionary = sim.travel_quote()
+	transit.add_child(wrapped("TRANSIT TO %s\n%d years · %.1f fuel · %.1f propellant\n%.1f integrity consumed" % [destination.to_upper(), quote.years, quote.fuel_cost, quote.propellant_cost, quote.wear], 14, GOLD))
 	var travel := button("Depart for " + destination + " →", request_travel, "Depart")
-	travel.disabled = sim.state.ship.fuel < 18.0 or sim.state.ship.propellant < 65.0 or sim.state.ship.integrity <= 20.0
+	travel.disabled = sim.state.ship.fuel < quote.fuel_cost or sim.state.ship.propellant < quote.propellant_cost or sim.state.ship.integrity <= maxf(20.0, quote.wear)
 	transit.add_child(travel)
 	if travel.disabled:
 		transit.add_child(wrapped("Insufficient transit reserves. Collect supplies or repair at a local factory.", 13, GOLD))
 
 func act(action: String, value: float = 288.0) -> void:
 	var was_complete: bool = sim.state.first_rain
-	var outcome: Dictionary = session.command(action, selected, value)
+	var outcome: Dictionary = session.command(action, "" if action == "travel" else selected, value)
 	status.text = outcome.message
 	if outcome.ok:
 		if action == "travel":
-			selected = "eir_iii" if sim.state.system == "eir" else "vesper_b"
+			selected = session.default_body()
 			chart = false
 		refresh()
 		autosave()
@@ -339,7 +347,8 @@ func request_travel() -> void:
 			abandoned.append(body.name + " (" + body.factory + ")")
 		if body.system == sim.state.system and session.sites.has(body.id) and session.sites[body.id].state.landed:
 			abandoned.append(body.name + " (surface installation; finite stores)")
-	travel_dialog.dialog_text = "%d years will pass.\nCost: 18 reactor fuel, 65 propellant, 8 integrity.\n\nFactories left working: %s\n\nReturn travel has the same cost. Supplies are collected locally." % [sim.travel_quote().years, ", ".join(abandoned) if not abandoned.is_empty() else "none"]
+	var quote: Dictionary = sim.travel_quote()
+	travel_dialog.dialog_text = "%d years will pass.\nCost: %.1f reactor fuel, %.1f propellant, %.1f integrity.\n\nFactories left working: %s\n\nReturn travel has the same cost. Supplies are collected locally." % [quote.years, quote.fuel_cost, quote.propellant_cost, quote.wear, ", ".join(abandoned) if not abandoned.is_empty() else "none"]
 	travel_dialog.popup_centered(Vector2i(590, 250))
 
 func autosave() -> void:
@@ -361,7 +370,7 @@ func load_game() -> void:
 	var outcome: Dictionary = session.restore_json(FileAccess.get_file_as_string(SAVE_PATH))
 	status.text = outcome.message
 	if outcome.ok:
-		selected = "eir_iii" if sim.state.system == "eir" else "vesper_b"
+		selected = session.default_body()
 		refresh()
 
 func open_surface() -> void:
@@ -375,3 +384,13 @@ func _unhandled_key_input(event: InputEvent) -> void:
 		var fullscreen := DisplayServer.window_get_mode() == DisplayServer.WINDOW_MODE_FULLSCREEN
 		DisplayServer.window_set_mode(DisplayServer.WINDOW_MODE_WINDOWED if fullscreen else DisplayServer.WINDOW_MODE_FULLSCREEN)
 		get_viewport().set_input_as_handled()
+
+func open_prospects() -> void:
+	get_tree().change_scene_to_file("res://scenes/prospects.tscn")
+
+func show_legacy_chart() -> void:
+	if sim.state.system not in ["eir", "vesper"]:
+		open_prospects()
+		return
+	chart = true
+	refresh()

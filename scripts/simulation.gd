@@ -7,8 +7,11 @@ const SAVE_VERSION := 1
 var scenario: Dictionary
 var state: Dictionary
 
-func _init() -> void:
+func _init(additional: Dictionary = {}) -> void:
 	scenario = JSON.parse_string(FileAccess.get_file_as_string(SCENARIO_PATH))
+	for key in ["systems", "bodies"]:
+		if additional.has(key):
+			scenario[key].append_array(additional[key].duplicate(true))
 	reset()
 
 func reset() -> void:
@@ -56,6 +59,8 @@ func command(action: String, id: String = "", value: float = 288.0) -> Dictionar
 				return result(false, "Survey the site before committing a factory.")
 			if body.factory != "" or ship.modules < 1:
 				return result(false, "This site needs an empty berth and one onboard factory.")
+			if body.get("generated", false) and body.kind == "world":
+				return result(false, "Use spatial industry on this prospect. Global interventions are not modelled here yet.")
 			ship.modules -= 1
 			body.factory = "warming" if body.kind == "world" else "mining"
 			record("Factory landed on %s. %s policy active." % [body.name, body.factory], id)
@@ -86,6 +91,8 @@ func command(action: String, id: String = "", value: float = 288.0) -> Dictionar
 		"seed":
 			if body.is_empty() or not body.surveyed or body.kind != "world" or body.seeded:
 				return result(false, "Select a surveyed, unseeded terrestrial world.")
+			if body.get("generated", false):
+				return result(false, "Exposed-life viability is unresolved. A protected surface refuge is available.")
 			if ship.seeds < 1 or body.temperature < 273.0 or body.temperature > 303.0 or body.water < 0.1:
 				return result(false, "Life needs liquid water and 273–303 K. One seed archive required.")
 			ship.seeds -= 1
@@ -108,13 +115,17 @@ func command(action: String, id: String = "", value: float = 288.0) -> Dictionar
 			advance(2)
 			record("Spaceship repaired. I feel rather more structurally sound.")
 		"travel":
-			var quote := travel_quote()
+			var quote := travel_quote(id)
+			if not quote.valid:
+				return result(false, "Choose another known system.")
 			if ship.fuel < quote.fuel_cost or ship.propellant < quote.propellant_cost or ship.integrity <= 20.0:
-				return result(false, "Transit requires 18 fuel, 65 propellant, and integrity above 20%.")
+				return result(false, "Transit needs %.1f fuel, %.1f propellant and integrity above 20%%." % [quote.fuel_cost, quote.propellant_cost])
+			if ship.integrity - quote.wear <= 0.0:
+				return result(false, "Transit wear exceeds hull integrity.")
 			ship.fuel -= quote.fuel_cost
 			ship.propellant -= quote.propellant_cost
 			ship.integrity -= quote.wear
-			var destination: String = "vesper" if state.system == "eir" else "eir"
+			var destination: String = quote.destination
 			record("Departure. %d years to %s. The factories have their instructions." % [quote.years, destination.to_upper()])
 			# In transit: do not update remote observations or leak surface events.
 			state.system = "transit"
@@ -122,7 +133,7 @@ func command(action: String, id: String = "", value: float = 288.0) -> Dictionar
 			state.system = destination
 			if destination == "vesper":
 				state.visited_vesper = true
-			elif state.visited_vesper:
+			elif destination == "eir" and state.visited_vesper:
 				state.returned = true
 			record("Arrival in %s. Local telemetry acquired." % destination.to_upper())
 			if destination == "eir" and state.returned and state.bodies.eir_iii.water > 0.15 and not state.first_rain:
@@ -133,8 +144,34 @@ func command(action: String, id: String = "", value: float = 288.0) -> Dictionar
 	observe_local()
 	return result(true, "Command complete.")
 
-func travel_quote() -> Dictionary:
+func has_system(id: String) -> bool:
+	for definition in scenario.systems:
+		if definition.id == id:
+			return true
+	return false
+
+func system_position(id: String) -> Vector2:
+	if id == "eir":
+		return Vector2.ZERO
+	if id == "vesper":
+		return Vector2(4.2, 0)
+	for definition in scenario.systems:
+		if definition.id == id:
+			return Vector2(definition.get("x_ly", 0), definition.get("y_ly", 0))
+	return Vector2.ZERO
+
+func travel_quote(destination: String = "") -> Dictionary:
 	var route: Dictionary = scenario.route.duplicate(true)
+	if destination == "":
+		destination = "vesper" if state.system == "eir" else "eir"
+	route.destination = destination
+	route.valid = has_system(destination) and destination != state.system
+	if route.valid and not (state.system in ["eir", "vesper"] and destination in ["eir", "vesper"]):
+		route.distance_ly = system_position(state.system).distance_to(system_position(destination))
+		var ratio: float = route.distance_ly / scenario.route.distance_ly
+		route.fuel_cost *= ratio
+		route.propellant_cost *= ratio
+		route.wear *= sqrt(ratio)
 	route.years = int(ceil(route.distance_ly / route.cruise_fraction_c)) + int(route.maneuver_years)
 	return route
 
@@ -149,6 +186,10 @@ func advance(years: int) -> void:
 	observe_local()
 
 func step_body(body: Dictionary) -> void:
+	# Generated prospects have no exposed-climate solver yet. Do not silently
+	# award liquid water or habitability from the legacy temperature fixture.
+	if body.get("generated", false) and body.kind == "world":
+		return
 	if body.factory == "mining" and body.deposit > 0.0:
 		var amount := minf(3.0, body.deposit)
 		body.deposit -= amount
@@ -249,7 +290,7 @@ func valid_save(candidate: Dictionary) -> bool:
 	template.observations = {}
 	if not matches_shape(candidate, template) or candidate.version != SAVE_VERSION:
 		return false
-	if candidate.system not in ["eir", "vesper"] or candidate.year < scenario.start_year or candidate.year != floor(candidate.year):
+	if not has_system(candidate.system) or candidate.year < scenario.start_year or candidate.year != floor(candidate.year):
 		return false
 	for resource in candidate.ship:
 		if not resource in scenario.ship or candidate.ship[resource] < 0.0 or candidate.ship[resource] > 1000000000.0:

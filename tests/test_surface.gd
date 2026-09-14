@@ -143,7 +143,7 @@ func _initialize() -> void:
 	var before_bad_load: String = session_copy.save_json()
 	check(not session_copy.restore_json("{bad json").ok, "Malformed save rejected without engine error")
 	check(session_copy.save_json() == before_bad_load, "Malformed save is exactly atomic")
-	check(session_copy.restore_json(session.expedition.save_json()).ok and session_copy.sites.is_empty(), "Old version-one expedition saves migrate")
+	check(session_copy.restore_json(load("res://scripts/simulation.gd").new().save_json()).ok and session_copy.sites.is_empty(), "Original version-one expedition saves migrate")
 	check(session.command("travel").ok and session.surface_for("eir_iii") != null, "Return reacquires the same site")
 	check(session.surface_for("eir_iii").state.landed, "Module persists on return")
 	print("Surface and session: %d checks, %d failures" % [checks, failures])

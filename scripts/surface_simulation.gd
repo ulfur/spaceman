@@ -19,16 +19,18 @@ static var RECIPES: Dictionary = CONFIG.recipes
 var state: Dictionary
 var _network_dirty := true
 
-func _init(seed: int = 1701) -> void:
-	reset(seed)
+func _init(seed: int = 1701, context: Dictionary = {}) -> void:
+	reset(seed, context)
 
-func reset(seed: int = 1701) -> void:
+func reset(seed: int = 1701, context: Dictionary = {}) -> void:
 	var rng := RandomNumberGenerator.new()
 	rng.seed = seed
 	state = {"version": SAVE_VERSION, "seed": seed, "total_hours": 0,
 		"landed": false, "next_id": 1,
 		"resources": CONFIG.starting_resources.duplicate(true),
 		"cells": [], "structures": [], "events": [], "milestone": false}
+	if not context.is_empty():
+		state.solar_factor = float(context.get("solar_factor", 1.0))
 	var phase: float = rng.randf_range(-3.0, 3.0)
 	var ore_center := Vector2(rng.randi_range(5, 8), rng.randi_range(7, 11))
 	var ice_center := Vector2(rng.randi_range(12, 15), rng.randi_range(8, 12))
@@ -42,6 +44,8 @@ func reset(seed: int = 1701) -> void:
 			if p.distance_to(ice_center) < 2.2 or rng.randf() < 0.035:
 				resource = "ice"
 			var remaining: float = rng.randf_range(100.0, 280.0) if resource != "" else 0.0
+			if resource != "":
+				remaining *= context.get("ore_factor" if resource == "metal" else "ice_factor", 1.0)
 			state.cells.append({"x": x, "z": z, "height": elevation,
 				"resource": resource, "remaining": remaining, "initial": remaining,
 				"scanned": p.distance_to(Vector2(10, 10)) <= 4.5,
@@ -192,7 +196,7 @@ func _allocate_power() -> Dictionary:
 		if structure.kind == "seed":
 			supply += RECIPES.seed.supply
 		elif structure.kind == "solar":
-			supply += RECIPES.solar.supply * cell_at(structure.x, structure.z).light
+			supply += RECIPES.solar.supply * cell_at(structure.x, structure.z).light * state.get("solar_factor", 1.0)
 	var available: float = supply
 	for structure in state.structures:
 		structure.powered = false
@@ -253,7 +257,7 @@ func _step_hour() -> bool:
 			"seed":
 				structure.status = "Service hub · %.1f kW" % RECIPES.seed.supply
 			"solar":
-				structure.status = "Generating %.1f kW" % (RECIPES.solar.supply * cell_at(structure.x, structure.z).light)
+				structure.status = "Generating %.1f kW" % (RECIPES.solar.supply * cell_at(structure.x, structure.z).light * state.get("solar_factor", 1.0))
 			"mine", "ice_well":
 				var cell := cell_at(structure.x, structure.z)
 				var output: String = "ore" if structure.kind == "mine" else "water"
@@ -404,6 +408,8 @@ func _integer(value: Variant, low: int, high: int = 1000000000) -> bool:
 	return _number(value, low, high) and value == floor(value)
 
 func _valid_save(candidate: Dictionary) -> bool:
+	if candidate.has("solar_factor") and not _number(candidate.solar_factor, 0.01, 1.8):
+		return false
 	for key in ["version", "seed", "total_hours", "next_id", "landed", "resources", "cells", "structures", "events", "milestone"]:
 		if not candidate.has(key):
 			return false
