@@ -140,6 +140,8 @@ func travel_quote() -> Dictionary:
 
 func advance(years: int) -> void:
 	# Fixed annual steps make one 100-year jump identical to 100 one-year steps.
+	if years <= 0:
+		return
 	for _year in range(clampi(years, 0, 10000)):
 		state.year += 1
 		for id in state.bodies:
@@ -215,11 +217,18 @@ func save_json() -> String:
 	return JSON.stringify(state, "\t", true, true)
 
 func restore_json(contents: String) -> Dictionary:
-	var parsed = JSON.parse_string(contents)
+	var parser := JSON.new()
+	if parser.parse(contents) != OK:
+		return result(false, "Invalid save JSON. Current expedition preserved.")
+	var parsed = parser.data
 	if not parsed is Dictionary or not valid_save(parsed):
 		return result(false, "Invalid or incompatible save. Current expedition preserved.")
 	state = parsed.duplicate(true)
 	state.year = int(state.year)
+	for observation in state.observations.values():
+		observation.year = int(observation.year)
+	for entry in state.log:
+		entry.year = int(entry.year)
 	return result(true, "Expedition restored.")
 
 func matches_shape(candidate: Variant, template: Variant) -> bool:
