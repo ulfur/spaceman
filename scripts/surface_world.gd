@@ -203,7 +203,7 @@ func refresh(surface_state: Dictionary) -> void:
 			if source.id == destination.id or not source.connected or not source.enabled or source.progress < 1.0 or source.path_distance >= destination.path_distance:
 				continue
 			var length: float = Vector2(source.x - destination.x, source.z - destination.z).length()
-			if length <= 6.0 and length < nearest:
+			if length <= Surface.LINK_RANGE and length < nearest:
 				nearest = length
 				best = source
 		if not best.is_empty():

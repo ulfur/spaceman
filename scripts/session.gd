@@ -32,7 +32,7 @@ func surface_for(id: String) -> RefCounted:
 	if not site_available(id):
 		return null
 	if not sites.has(id):
-		sites[id] = Surface.new(1701)
+		sites[id] = Surface.new(int(Surface.CONFIG.seed))
 	return sites[id]
 
 func surface_command(action: String, x: int = -1, z: int = -1) -> Dictionary:

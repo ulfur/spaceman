@@ -98,7 +98,7 @@ func can_place(kind: String, x: int, z: int) -> Dictionary:
 			near_network = true
 			break
 	if not near_network:
-		return _result(false, "Beyond the 24 m service link. Expand from a completed, connected installation.")
+		return _result(false, "Beyond the %.0f m service link. Expand from a completed, connected installation." % (LINK_RANGE * CELL_SIZE))
 	var cost: Dictionary = RECIPES[kind].cost
 	for resource in cost:
 		if state.resources[resource] + 0.0000001 < cost[resource]:
@@ -190,9 +190,9 @@ func _allocate_power() -> Dictionary:
 		if not structure.enabled or not structure.connected or structure.progress < 1.0:
 			continue
 		if structure.kind == "seed":
-			supply += 8.0
+			supply += RECIPES.seed.supply
 		elif structure.kind == "solar":
-			supply += 12.0 * cell_at(structure.x, structure.z).light
+			supply += RECIPES.solar.supply * cell_at(structure.x, structure.z).light
 	var available: float = supply
 	for structure in state.structures:
 		structure.powered = false
@@ -251,9 +251,9 @@ func _step_hour() -> bool:
 			continue
 		match structure.kind:
 			"seed":
-				structure.status = "Service hub · 8 kW"
+				structure.status = "Service hub · %.1f kW" % RECIPES.seed.supply
 			"solar":
-				structure.status = "Generating %.1f kW" % (12.0 * cell_at(structure.x, structure.z).light)
+				structure.status = "Generating %.1f kW" % (RECIPES.solar.supply * cell_at(structure.x, structure.z).light)
 			"mine", "ice_well":
 				var cell := cell_at(structure.x, structure.z)
 				var output: String = "ore" if structure.kind == "mine" else "water"
