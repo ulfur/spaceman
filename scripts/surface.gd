@@ -282,7 +282,7 @@ func refresh() -> void:
 		objective.text = "Give life a room\nof its own."
 	else:
 		objective.text = "A small beginning."
-	event_label.text = "Enclosed pioneer culture: %d%%\n\nThe planet outside is still hostile.\n\nOre → metal → components\nIce → water\nPower + supplies → refuge" % int(report.refuge_progress * 100)
+	event_label.text = "Enclosed pioneer culture: %d%%\n\nEnclosed life is not a planetary biosphere.\n\nOre → metal → components\nIce → water\nPower + supplies → refuge" % int(report.refuge_progress * 100)
 	if state.events.size() > 0:
 		event_label.text += "\n\n" + state.events[-1].text
 	update_clock()

@@ -165,12 +165,17 @@ func build_interface() -> void:
 	add_child(travel_dialog)
 	reset_dialog = ConfirmationDialog.new()
 	reset_dialog.title = "Begin a different expedition?"
-	reset_dialog.dialog_text = "This replaces the current expedition and autosave.\nChanging the seed changes every prospect.\n\nNeighbourhood seed:"
+	reset_dialog.ok_button_text = "Begin expedition"
+	var reset_content := stack(reset_dialog)
+	reset_content.custom_minimum_size.x = 430
+	reset_content.add_child(wrapped("This replaces the current expedition and autosave. Changing the seed changes every prospect.", 14))
+	reset_content.add_child(label("Neighbourhood seed", 14, CYAN))
 	seed_input = SpinBox.new()
 	seed_input.min_value = 1
 	seed_input.max_value = 999999
 	seed_input.step = 1
-	reset_dialog.add_child(seed_input)
+	seed_input.custom_minimum_size.y = 38
+	reset_content.add_child(seed_input)
 	reset_dialog.register_text_enter(seed_input.get_line_edit())
 	reset_dialog.confirmed.connect(new_expedition)
 	add_child(reset_dialog)
@@ -236,10 +241,7 @@ func assessment(data: Dictionary) -> String:
 	return text
 
 func system_name(id: String) -> String:
-	for definition in session.expedition.scenario.systems:
-		if definition.id == id:
-			return definition.name.to_upper()
-	return id.to_upper()
+	return session.expedition.system_name(id)
 
 func latest_observation(data: Dictionary) -> String:
 	var latest: Dictionary = {}
@@ -300,6 +302,12 @@ func new_expedition() -> void:
 	refresh()
 
 func _unhandled_key_input(event: InputEvent) -> void:
-	if event is InputEventKey and event.pressed and not event.echo and event.keycode == KEY_ESCAPE:
+	if not event is InputEventKey or not event.pressed or event.echo:
+		return
+	if event.keycode == KEY_ESCAPE:
 		open_orbit()
+		get_viewport().set_input_as_handled()
+	elif event.keycode == KEY_F11:
+		var fullscreen := DisplayServer.window_get_mode() == DisplayServer.WINDOW_MODE_FULLSCREEN
+		DisplayServer.window_set_mode(DisplayServer.WINDOW_MODE_WINDOWED if fullscreen else DisplayServer.WINDOW_MODE_FULLSCREEN)
 		get_viewport().set_input_as_handled()

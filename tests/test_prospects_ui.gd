@@ -66,6 +66,7 @@ func run() -> void:
 	click("Observe_probe")
 	check(session.site_available(chosen + "_b"), "Local probe opens new surface")
 	check("Atmospheric column" in game.dossier.text, "Dossier exposes local shielding context")
+	await process_frame
 	game.find_child("DossierScroll", true, false).scroll_vertical = 10000
 	await capture("10-prospect-local-probe.png")
 	root.size = Vector2i(1100, 760)

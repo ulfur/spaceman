@@ -126,7 +126,7 @@ func command(action: String, id: String = "", value: float = 288.0) -> Dictionar
 			ship.propellant -= quote.propellant_cost
 			ship.integrity -= quote.wear
 			var destination: String = quote.destination
-			record("Departure. %d years to %s. The factories have their instructions." % [quote.years, destination.to_upper()])
+			record("Departure. %d years to %s. The factories have their instructions." % [quote.years, system_name(destination)])
 			# In transit: do not update remote observations or leak surface events.
 			state.system = "transit"
 			advance(quote.years)
@@ -135,7 +135,7 @@ func command(action: String, id: String = "", value: float = 288.0) -> Dictionar
 				state.visited_vesper = true
 			elif destination == "eir" and state.visited_vesper:
 				state.returned = true
-			record("Arrival in %s. Local telemetry acquired." % destination.to_upper())
+			record("Arrival in %s. Local telemetry acquired." % system_name(destination))
 			if destination == "eir" and state.returned and state.bodies.eir_iii.water > 0.15 and not state.first_rain:
 				state.first_rain = true
 				record("There is rain on Eir III. I remember the idea of its smell.")
@@ -149,6 +149,12 @@ func has_system(id: String) -> bool:
 		if definition.id == id:
 			return true
 	return false
+
+func system_name(id: String) -> String:
+	for definition in scenario.systems:
+		if definition.id == id:
+			return definition.name.to_upper()
+	return id.to_upper()
 
 func system_position(id: String) -> Vector2:
 	if id == "eir":

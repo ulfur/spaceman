@@ -209,6 +209,8 @@ func refresh() -> void:
 	objective_label.text = sim.objective()
 	if session.sites.has("eir_iii") and session.sites.eir_iii.state.landed:
 		objective_label.text = "FIRST FOOTHOLD  /  Your Eir III installation persists. Manage its production locally, or leave and return to the consequences."
+	if session.prospects.worlds.has(state.system):
+		objective_label.text = "PROSPECTS  /  Probe the candidate world, establish surface industry or harvest ship supplies from its companion. Return to the observatory when you are ready to choose another destination."
 	clear_children(body_list)
 	for definition in sim.scenario.bodies:
 		if definition.system != state.system:
