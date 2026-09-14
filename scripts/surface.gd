@@ -19,6 +19,7 @@ var tool := "land"
 var speed := 0
 var accumulated := 0.0
 var autosave_elapsed := 0.0
+var notice_until_msec := 0
 var inventory: Label
 var time_label: Label
 var objective: Label
@@ -245,6 +246,7 @@ func select_or_build(cell: Vector2i) -> void:
 	if tool != "inspect":
 		var outcome: Dictionary = session.surface_command(tool, cell.x, cell.y)
 		status.text = outcome.message
+		notice_until_msec = Time.get_ticks_msec() + 2500
 		if outcome.ok:
 			if tool == "land":
 				set_tool("inspect")
@@ -258,7 +260,7 @@ func update_preview() -> void:
 	if tool not in ["inspect", "survey"]:
 		valid = site.can_place(tool, hovered.x, hovered.y).ok
 	world.set_preview("" if tool == "inspect" else tool, hovered, valid)
-	if hovered.x >= 0 and tool not in ["inspect", "survey"]:
+	if hovered.x >= 0 and tool not in ["inspect", "survey"] and Time.get_ticks_msec() >= notice_until_msec:
 		var allowed: Dictionary = site.can_place(tool, hovered.x, hovered.y)
 		status.text = allowed.message
 

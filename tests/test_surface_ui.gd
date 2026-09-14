@@ -2,6 +2,7 @@ extends SceneTree
 const Session = preload("res://scripts/session.gd")
 var game: Control
 var failures := 0
+var mouse_initialized := false
 
 func check(condition: bool, message: String) -> void:
 	if not condition:
@@ -18,7 +19,9 @@ func capture(filename: String) -> void:
 
 func click_position(position_value: Vector2) -> void:
 	# Go through GUI hit-testing, not just a manually emitted callback signal.
-	root.notify_mouse_entered()
+	if not mouse_initialized:
+		root.notify_mouse_entered()
+		mouse_initialized = true
 	var motion := InputEventMouseMotion.new()
 	motion.position = position_value
 	motion.global_position = position_value
