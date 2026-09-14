@@ -1,0 +1,14 @@
+{
+  "start_year": 2400,
+  "ship": {"fuel": 80.0, "propellant": 180.0, "alloy": 24.0, "integrity": 100.0, "modules": 2, "seeds": 3},
+  "route": {"distance_ly": 4.2, "cruise_fraction_c": 0.07, "maneuver_years": 8, "fuel_cost": 18.0, "propellant_cost": 65.0, "wear": 8.0},
+  "systems": [
+    {"id": "eir", "name": "EIR", "subtitle": "A quiet sun. A world waiting for water.", "x": 0.28, "y": 0.61},
+    {"id": "vesper", "name": "VESPER", "subtitle": "Cold reserves at the edge of the light.", "x": 0.74, "y": 0.36}
+  ],
+  "bodies": [
+    {"id": "eir_iii", "system": "eir", "name": "Eir III", "kind": "world", "description": "A frozen terrestrial world. Subsurface water, a thin atmosphere, and no detected life.", "baseline": 244.0, "temperature": 244.0, "deposit": 420.0, "seed": 17.0},
+    {"id": "nacre", "system": "eir", "name": "Nacre", "kind": "moon", "description": "Eir III's pale moon. Water ice, reactor isotopes, and accessible metals.", "baseline": 110.0, "temperature": 110.0, "deposit": 520.0, "seed": 38.0},
+    {"id": "vesper_b", "system": "vesper", "name": "Vesper B", "kind": "moon", "description": "A fractured ice world. Excellent feedstock for fuel, propellant, and replacement hardware.", "baseline": 95.0, "temperature": 95.0, "deposit": 800.0, "seed": 63.0}
+  ]
+}
