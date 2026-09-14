@@ -51,6 +51,17 @@ func _initialize() -> void:
 	sim.advance(100)
 	check(sim.state.bodies.eir_iii.biomass < healthy * 0.1, "Bad policy has ecological consequences")
 
+	var late = Simulation.new()
+	late.command("travel")
+	late.command("travel")
+	late.command("survey", "eir_iii")
+	late.command("deploy", "eir_iii")
+	late.state.ship.propellant = 200.0
+	late.command("travel")
+	check(not late.state.first_rain, "An earlier return cannot award unseen rain while arriving at Vesper")
+	late.command("travel")
+	check(late.state.first_rain, "Late intervention is discovered on the next actual return to Eir")
+
 	var jump = warming_world()
 	var ticks = warming_world()
 	jump.command("survey", "nacre")
@@ -102,6 +113,13 @@ func _initialize() -> void:
 	check(restored.restore_json(saved).ok, "Versioned JSON save loads")
 	original.advance(100)
 	restored.advance(100)
+	if original.save_json() != restored.save_json():
+		var expected: String = original.save_json()
+		var actual: String = restored.save_json()
+		for index in range(mini(expected.length(), actual.length())):
+			if expected[index] != actual[index]:
+				print("Save continuity difference: expected=", expected.substr(maxi(0, index - 60), 160), " actual=", actual.substr(maxi(0, index - 60), 160))
+				break
 	check(original.save_json() == restored.save_json(), "Save/load preserves future evolution")
 	restored.command("travel")
 	check(restored.restore_json(saved).ok, "Earlier save loads after visiting another system")
@@ -114,6 +132,9 @@ func _initialize() -> void:
 	invalid = JSON.parse_string(saved)
 	invalid.observations.eir_iii.body = {}
 	check(not restored.restore_json(JSON.stringify(invalid)).ok, "Malformed observations rejected")
+	invalid = JSON.parse_string(saved)
+	invalid.observations = {}
+	check(not restored.restore_json(JSON.stringify(invalid)).ok, "Missing navigation observations rejected")
 	invalid = JSON.parse_string(saved)
 	invalid.ship.modules = 1.5
 	check(not restored.restore_json(JSON.stringify(invalid)).ok, "Fractional factory modules rejected")

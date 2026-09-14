@@ -125,7 +125,7 @@ func command(action: String, id: String = "", value: float = 288.0) -> Dictionar
 			elif state.visited_vesper:
 				state.returned = true
 			record("Arrival in %s. Local telemetry acquired." % destination.to_upper())
-			if state.returned and state.bodies.eir_iii.water > 0.15 and not state.first_rain:
+			if destination == "eir" and state.returned and state.bodies.eir_iii.water > 0.15 and not state.first_rain:
 				state.first_rain = true
 				record("There is rain on Eir III. I remember the idea of its smell.")
 		_:
@@ -260,8 +260,13 @@ func valid_save(candidate: Dictionary) -> bool:
 			return false
 	if candidate.bodies.size() != scenario.bodies.size():
 		return false
+	for required_id in ["eir_iii", "nacre"]:
+		if not candidate.observations.has(required_id):
+			return false
 	for definition in scenario.bodies:
 		if not candidate.bodies.has(definition.id):
+			return false
+		if definition.system == candidate.system and not candidate.observations.has(definition.id):
 			return false
 		var body: Dictionary = candidate.bodies[definition.id]
 		if body.id != definition.id or body.system != definition.system or body.kind != definition.kind:
