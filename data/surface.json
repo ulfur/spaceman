@@ -1,0 +1,15 @@
+{
+  "seed": 1701,
+  "link_range_cells": 6.0,
+  "starting_resources": {"ore": 0.0, "metal": 110.0, "water": 12.0, "components": 24.0, "biomass": 0.0},
+  "storage": {"ore": 300.0, "metal": 200.0, "water": 200.0, "components": 80.0},
+  "recipes": {
+    "seed": {"label": "Seed module", "cost": {}, "hours": 0.0, "power": 0.0, "supply": 8.0},
+    "solar": {"label": "Solar array", "cost": {"metal": 8.0, "components": 1.0}, "hours": 3.0, "power": 0.0, "supply": 12.0},
+    "mine": {"label": "Ore extractor", "cost": {"metal": 12.0, "components": 2.0}, "hours": 6.0, "power": 4.0},
+    "ice_well": {"label": "Ice well", "cost": {"metal": 10.0, "components": 2.0}, "hours": 6.0, "power": 4.0},
+    "refinery": {"label": "Refinery", "cost": {"metal": 18.0, "components": 3.0}, "hours": 8.0, "power": 6.0},
+    "fabricator": {"label": "Fabricator", "cost": {"metal": 20.0, "components": 4.0}, "hours": 10.0, "power": 5.0},
+    "refuge": {"label": "Pioneer refuge", "cost": {"metal": 24.0, "components": 6.0}, "hours": 12.0, "power": 7.0}
+  }
+}

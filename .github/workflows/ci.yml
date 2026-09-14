@@ -52,6 +52,18 @@ jobs:
         run: |
           xvfb-run -a godot --path . --rendering-method gl_compatibility --audio-driver Dummy --script res://tests/test_ui.gd -- --smoke 2>&1 | tee build/ui.log
           if grep -E 'SCRIPT ERROR|Parse Error|ERROR:|FAIL:' build/ui.log; then exit 1; fi
+      - name: Surface industry and shared-clock tests
+        timeout-minutes: 2
+        run: |
+          godot --headless --path . --script res://tests/test_surface.gd 2>&1 | tee build/surface.log
+          if grep -E 'SCRIPT ERROR|Parse Error|ERROR:|FAIL:' build/surface.log; then exit 1; fi
+      - name: Render and exercise the 3D surface
+        timeout-minutes: 2
+        env:
+          LIBGL_ALWAYS_SOFTWARE: "1"
+        run: |
+          xvfb-run -a godot --path . --rendering-method gl_compatibility --audio-driver Dummy --script res://tests/test_surface_ui.gd -- --smoke 2>&1 | tee build/surface-ui.log
+          if grep -E 'SCRIPT ERROR|Parse Error|ERROR:|FAIL:' build/surface-ui.log; then exit 1; fi
       - name: Preserve visual checks and test logs
         if: always()
         uses: actions/upload-artifact@v4
