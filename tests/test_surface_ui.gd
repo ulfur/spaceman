@@ -84,6 +84,8 @@ func run() -> void:
 	await capture("05-surface-survey.png")
 	click_cell(Vector2i(10, 10))
 	check(game.site.state.landed, "Terrain click lands actual ship module")
+	var roof: Vector2 = game.world.camera.unproject_position(game.world.cell_position(10, 10) + Vector3(0, 3.0, 0))
+	check(game.world.pick_cell(roof, true) == Vector2i(10, 10), "Inspecting a roof selects its machine, not ground behind it")
 	for kind in ["solar", "solar", "solar", "mine", "ice_well", "refinery", "fabricator", "refuge"]:
 		build(kind)
 	click_control(game.find_child("Speed10", true, false))

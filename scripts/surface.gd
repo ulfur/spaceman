@@ -222,7 +222,7 @@ func terrain_input(event: InputEvent) -> void:
 	if event is InputEventMouseMotion:
 		if event.button_mask & MOUSE_BUTTON_MASK_MIDDLE:
 			world.pan_camera(event.relative)
-		var cell: Vector2i = world.pick_cell(event.position)
+		var cell: Vector2i = world.pick_cell(event.position, tool == "inspect")
 		if cell != hovered:
 			hovered = cell
 			update_preview()
@@ -235,7 +235,7 @@ func terrain_input(event: InputEvent) -> void:
 			MOUSE_BUTTON_RIGHT:
 				set_tool("inspect")
 			MOUSE_BUTTON_LEFT:
-				select_or_build(world.pick_cell(event.position))
+				select_or_build(world.pick_cell(event.position, tool == "inspect"))
 
 func select_or_build(cell: Vector2i) -> void:
 	if cell.x < 0 or cell.y < 0:
@@ -248,7 +248,7 @@ func select_or_build(cell: Vector2i) -> void:
 		if outcome.ok:
 			if tool == "land":
 				set_tool("inspect")
-			session.save_disk()
+			autosave()
 	refresh()
 
 func update_preview() -> void:
@@ -320,14 +320,21 @@ func toggle_selected() -> void:
 	status.text = outcome.message
 	refresh()
 	if outcome.ok:
-		session.save_disk()
+		autosave()
+
+func autosave() -> bool:
+	var outcome: Dictionary = session.save_disk()
+	if not outcome.ok:
+		status.text = outcome.message
+	return outcome.ok
 
 func save_game() -> void:
 	status.text = session.save_disk().message
 
 func return_to_orbit() -> void:
 	set_speed(0)
-	session.save_disk()
+	if not autosave():
+		return
 	get_tree().change_scene_to_file("res://scenes/main.tscn")
 
 func _process(delta: float) -> void:
@@ -342,7 +349,7 @@ func _process(delta: float) -> void:
 	autosave_elapsed += delta
 	if autosave_elapsed >= 15:
 		autosave_elapsed = 0
-		session.save_disk()
+		autosave()
 
 func _unhandled_key_input(event: InputEvent) -> void:
 	if not event is InputEventKey or not event.pressed or event.echo:

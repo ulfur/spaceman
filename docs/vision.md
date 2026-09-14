@@ -92,10 +92,10 @@ The current console is a functional sketch. The target is a stronger, more disti
 - Mark unknown, estimated, and old information clearly. A detailed planetary overlay must not silently reveal what has not been surveyed or recently observed.
 - Preserve Spaceman's dry, restrained personality and the loneliness and curiosity of long expeditions.
 
-## Proposed next bounded experiment
+## First bounded experiment and what follows
 
-Build one useful surface site on one authored planet or moon, connected to its planetary overview. Give it a small resource map, a landable module, local surveying, a few placeable industrial structures, basic power and transport constraints, and a manufacturing queue. Test continuous time, pause, and speed controls there, with an improved spatial interface.
+First Foothold implements one bounded 3D sector on Eir III, connected to the orbital overview: terrain and deposits, a landable module, surveying, power, an aggregate service network, construction and repeating manufacturing batches, an enclosed microbial refuge, and pause/speed controls. It shares expedition time and saves. Its limits, including committed surface modules and no physical rover pathfinding, are recorded in the [implementation notes](surface-prototype.md).
 
-Use a small sandbox of contrasting candidate worlds and a reusable set of industrial and environmental rules. The player should gather distant evidence, choose an expedition, make consequential placement and production decisions, see a bottleneck, revise a plan, and watch real outputs influence the world. There is no fixed puzzle solution or required number of routes. The existing authored journey remains useful as a regression fixture and a test of autonomy.
+After playtesting that interaction, build a small sandbox of contrasting candidate worlds and a reusable set of industrial and environmental rules. The player should gather distant evidence, choose an expedition, make consequential placement and production decisions, see a bottleneck, revise a plan, and watch real outputs influence the world. There is no fixed puzzle solution or required number of routes. The existing authored journey remains useful as a regression fixture and a test of autonomy.
 
-This is a proposed next slice to design and playtest, not an instruction to implement every layer immediately. Detailed galactic generation, full planetary terrain, first-person exploration, and the entire habitability model remain later work.
+The [roadmap](roadmap.md) separates these milestones. Detailed galactic generation, full planetary terrain, first-person exploration and the entire habitability model remain later work; they are not hidden behind the current sector's visuals.

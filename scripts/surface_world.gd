@@ -297,7 +297,7 @@ func set_preview(kind: String, cell: Vector2i, valid: bool) -> void:
 	if kind not in ["survey", "inspect"]:
 		preview.add_child(make_structure("seed" if kind == "land" else kind, true))
 
-func pick_cell(screen_position: Vector2) -> Vector2i:
+func pick_cell(screen_position: Vector2, include_structures: bool = false) -> Vector2i:
 	var origin := camera.project_ray_origin(screen_position)
 	var direction := camera.project_ray_normal(screen_position)
 	if direction.y >= -0.01:
@@ -308,6 +308,17 @@ func pick_cell(screen_position: Vector2) -> Vector2i:
 		t = (ground(position_value.x, position_value.z) - origin.y) / direction.y
 		position_value = origin + direction * t
 	var cell := Vector2i(int(floor(position_value.x / CELL + 10)), int(floor(position_value.z / CELL + 10)))
+	if include_structures:
+		# Inspect machinery by its volume, not the ground projected behind its roof.
+		var closest: float = origin.distance_to(position_value)
+		for structure in snapshot.structures:
+			var height: float = 4.8 if structure.kind == "seed" else (3.8 if structure.kind == "mine" else 2.7)
+			height *= maxf(0.12, structure.progress)
+			var bounds := AABB(cell_position(structure.x, structure.z) - Vector3(1.7, 0, 1.7), Vector3(3.4, height, 3.4))
+			var hit: Variant = bounds.intersects_ray(origin, direction)
+			if hit is Vector3 and origin.distance_to(hit) < closest:
+				closest = origin.distance_to(hit)
+				cell = Vector2i(structure.x, structure.z)
 	return cell if cell.x >= 0 and cell.y >= 0 and cell.x < SIZE and cell.y < SIZE else Vector2i(-1, -1)
 
 func _update_camera() -> void:
