@@ -1,0 +1,85 @@
+name: Expedition checks
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: expedition-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  GODOT_VERSION: "4.5"
+  GODOT_SILENCE_ROOT_WARNING: "1"
+
+jobs:
+  test-and-export:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install pinned Godot editor
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p "$RUNNER_TEMP/godot"
+          cd "$RUNNER_TEMP/godot"
+          base="https://github.com/godotengine/godot-builds/releases/download/${GODOT_VERSION}-stable"
+          curl --fail --location --retry 3 "$base/Godot_v${GODOT_VERSION}-stable_linux.x86_64.zip" -o editor.zip
+          unzip -q editor.zip
+          chmod +x "Godot_v${GODOT_VERSION}-stable_linux.x86_64"
+          ln -s "$RUNNER_TEMP/godot/Godot_v${GODOT_VERSION}-stable_linux.x86_64" "$RUNNER_TEMP/godot/godot"
+          echo "$RUNNER_TEMP/godot" >> "$GITHUB_PATH"
+      - name: Import project and check scripts
+        run: |
+          mkdir -p build
+          godot --headless --path . --editor --import 2>&1 | tee build/import.log
+          if grep -E 'SCRIPT ERROR|Parse Error|ERROR:' build/import.log; then exit 1; fi
+      - name: Deterministic simulation tests
+        timeout-minutes: 2
+        run: |
+          godot --headless --path . --script res://tests/test_simulation.gd 2>&1 | tee build/simulation.log
+          if grep -E 'SCRIPT ERROR|Parse Error|ERROR:|FAIL:' build/simulation.log; then exit 1; fi
+      - name: Render and exercise the expedition interface
+        timeout-minutes: 2
+        env:
+          LIBGL_ALWAYS_SOFTWARE: "1"
+        run: |
+          xvfb-run -a godot --path . --rendering-method gl_compatibility --audio-driver Dummy --script res://tests/test_ui.gd -- --smoke 2>&1 | tee build/ui.log
+          if grep -E 'SCRIPT ERROR|Parse Error|ERROR:|FAIL:' build/ui.log; then exit 1; fi
+      - name: Preserve visual checks and test logs
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: expedition-checks
+          path: |
+            build/*.png
+            build/*.log
+      - name: Install matching export templates
+        shell: bash
+        run: |
+          set -euo pipefail
+          base="https://github.com/godotengine/godot-builds/releases/download/${GODOT_VERSION}-stable"
+          curl --fail --location --retry 3 "$base/Godot_v${GODOT_VERSION}-stable_export_templates.tpz" -o "$RUNNER_TEMP/templates.zip"
+          mkdir -p "$HOME/.local/share/godot/export_templates/${GODOT_VERSION}.stable"
+          unzip -j -q "$RUNNER_TEMP/templates.zip" 'templates/linux_*' 'templates/web_*' 'templates/version.txt' -d "$HOME/.local/share/godot/export_templates/${GODOT_VERSION}.stable"
+      - name: Export playable builds
+        run: |
+          mkdir -p build/web build/linux
+          godot --headless --path . --export-release Web build/web/index.html
+          godot --headless --path . --export-release Linux build/linux/spaceman.x86_64
+      - name: Upload browser build
+        uses: actions/upload-artifact@v4
+        with:
+          name: spaceman-web
+          path: build/web/
+      - name: Upload Linux build
+        uses: actions/upload-artifact@v4
+        with:
+          name: spaceman-linux
+          path: build/linux/
