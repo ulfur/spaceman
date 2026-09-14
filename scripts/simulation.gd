@@ -224,6 +224,7 @@ func restore_json(contents: String) -> Dictionary:
 	if not parsed is Dictionary or not valid_save(parsed):
 		return result(false, "Invalid or incompatible save. Current expedition preserved.")
 	state = parsed.duplicate(true)
+	state.version = int(state.version)
 	state.year = int(state.year)
 	for observation in state.observations.values():
 		observation.year = int(observation.year)
