@@ -49,9 +49,9 @@ func label(text: String, font_size: int = 15, color: Color = INK) -> Label:
 	node.text = text
 	node.add_theme_font_size_override("font_size", font_size)
 	node.add_theme_color_override("font_color", color)
-	node.add_theme_color_override("font_shadow_color", Color(0, 0, 0, 0.85))
-	node.add_theme_constant_override("shadow_offset_x", 1)
-	node.add_theme_constant_override("shadow_offset_y", 2)
+	node.add_theme_color_override("font_shadow_color", Color(0, 0, 0, 0.45))
+	node.add_theme_constant_override("shadow_offset_x", 0)
+	node.add_theme_constant_override("shadow_offset_y", 1)
 	node.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	return node
 
@@ -109,6 +109,13 @@ func build_interface() -> void:
 	viewport.add_child(world)
 	world.setup(site.state)
 	viewport_container.gui_input.connect(terrain_input)
+	var shade := ColorRect.new()
+	shade.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	shade.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	var shade_material := ShaderMaterial.new()
+	shade_material.shader = preload("res://shaders/surface_hud.gdshader")
+	shade.material = shade_material
+	add_child(shade)
 	var top := margin_box(Control.PRESET_TOP_WIDE, Vector4(28, 22, -28, 112))
 	var stack := VBoxContainer.new()
 	stack.mouse_filter = Control.MOUSE_FILTER_IGNORE

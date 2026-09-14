@@ -45,7 +45,7 @@ The orbital console remains manually advanced and entering it pauses continuous 
 
 Long advances use the same hourly rules. Once no physical quantity can change, the remaining stationary interval can be skipped. A special linear maintenance step skips only qualifying refuge-only intervals up to an inventory threshold. Pending jobs and extraction that could resume prevent that skip. Tests compare batched and hourly advances and cover a 68-year absence.
 
-Version-two saves contain the orbital state, site state and fractional year. Version-one expedition saves migrate. Loads validate into temporary models before replacing live state; invalid files preserve the current expedition. The same existing `expedition.json` path is used, with temporary-file replacement and periodic surface autosave. Smoke tests bypass player-file I/O.
+Version-two saves contain the orbital state, site state and fractional year. Version-one expedition saves migrate. Loads validate into temporary models before replacing live state; invalid files preserve the current expedition exactly. JSON decimal parsing can perturb a floating-point value by a few machine bits; numeric save continuity is tested within an absolute 1e-8 model-unit tolerance, while integer clocks and allocations remain exact. The same existing `expedition.json` path is used, with temporary-file replacement and periodic surface autosave. Smoke tests bypass player-file I/O.
 
 ## Not implemented here
 

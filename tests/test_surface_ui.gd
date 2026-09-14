@@ -49,10 +49,21 @@ func run() -> void:
 	var session = Session.get_shared()
 	session.reset()
 	session.initialized = true
-	session.command("survey", "eir_iii")
-	game = load("res://scenes/surface.tscn").instantiate()
+	game = load("res://scenes/main.tscn").instantiate()
 	root.add_child(game)
+	current_scene = game
 	await process_frame
+	game.find_child("Action_survey", true, false).pressed.emit()
+	check(game.find_child("Surface", true, false) != null, "Orbital survey exposes surface entry")
+	game.find_child("Surface", true, false).pressed.emit()
+	await process_frame
+	await process_frame
+	game = current_scene
+	check(game.name == "Surface", "Orbital button loads real surface scene")
+	await process_frame
+	var terrain: MeshInstance3D = game.world.get_node("Terrain")
+	var arrays: Array = terrain.mesh.surface_get_arrays(0)
+	check(arrays[Mesh.ARRAY_NORMAL][0].y > 0.5, "Terrain faces upward rather than being back-face culled")
 	check(game.speed == 0, "Surface starts paused")
 	await capture("05-surface-survey.png")
 	click_cell(Vector2i(10, 10))
@@ -78,6 +89,17 @@ func run() -> void:
 	root.size = Vector2i(1100, 760)
 	await capture("07-surface-compact.png")
 	check(game.get_global_rect().encloses(game.find_child("Toolbelt", true, false).get_global_rect()), "Toolbelt fits compact window")
+	var hours_before_return: int = game.site.state.total_hours
+	game.find_child("ReturnOrbit", true, false).pressed.emit()
+	await process_frame
+	await process_frame
+	game = current_scene
+	check(game.name == "Spaceman", "Return button restores orbital scene")
+	game.find_child("Surface", true, false).pressed.emit()
+	await process_frame
+	await process_frame
+	game = current_scene
+	check(game.site.state.total_hours == hours_before_return and game.site.state.landed, "Re-entering surface preserves clock and module")
 	print("Surface UI: %d failures" % failures)
 	game.queue_free()
 	await process_frame

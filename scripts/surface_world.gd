@@ -119,19 +119,20 @@ func _build_terrain() -> void:
 			for index in range(4):
 				st.set_color(base.lightened(0.025 * (index % 2)))
 				st.add_vertex(center)
-				st.add_vertex(corners[(index + 1) % 4])
 				st.add_vertex(corners[index])
+				st.add_vertex(corners[(index + 1) % 4])
 	st.generate_normals()
-	var terrain_mat := material(Color.WHITE)
-	terrain_mat.vertex_color_use_as_albedo = true
-	mesh_node(self, st.commit(), Vector3.ZERO, terrain_mat)
+	var terrain_mat := ShaderMaterial.new()
+	terrain_mat.shader = preload("res://shaders/surface_terrain.gdshader")
+	var terrain := mesh_node(self, st.commit(), Vector3.ZERO, terrain_mat)
+	terrain.name = "Terrain"
 	# Geological apron and distant ridges make the sector a place, not a floating board.
 	var apron := PlaneMesh.new()
 	apron.size = Vector2(340, 340)
-	mesh_node(self, apron, Vector3(0, -0.12, 0), material(Color("645748")))
+	mesh_node(self, apron, Vector3(0, -0.12, 0), terrain_mat)
 	var rng := RandomNumberGenerator.new()
 	rng.seed = int(snapshot.seed) + 81
-	var rock_mat := material(Color("544c42"))
+	var rock_mat := material(Color("333e42"))
 	for i in range(155):
 		var angle: float = rng.randf() * TAU
 		var radius: float = rng.randf_range(48.0, 110.0)
