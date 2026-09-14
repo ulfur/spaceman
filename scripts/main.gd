@@ -206,6 +206,8 @@ func refresh() -> void:
 	year_label.text = "YEAR %d" % state.year
 	resources.text = "FUEL  %.1f     /     PROPELLANT  %.1f     /     ALLOY  %.1f     /     INTEGRITY  %.0f%%     /     FACTORIES ABOARD  %d     /     SEEDS  %d" % [ship.fuel, ship.propellant, ship.alloy, ship.integrity, ship.modules, ship.seeds]
 	objective_label.text = sim.objective()
+	if session.sites.has("eir_iii") and session.sites.eir_iii.state.landed:
+		objective_label.text = "FIRST FOOTHOLD  /  Your Eir III installation persists. Manage its production locally, or leave and return to the consequences."
 	clear_children(body_list)
 	for definition in sim.scenario.bodies:
 		if definition.system != state.system:
@@ -228,6 +230,8 @@ func refresh() -> void:
 			if body.kind == "world" and body.temperature > 303.0:
 				subtitle.text = "A world pushed beyond the seed archive's tolerances. The heat is hostile to pioneer life."
 			telemetry.text = "%.1f K   /   %.0f%% SURFACE WATER   /   %.1f%% BIOSPHERE\n%s  ·  %.1f accessible feedstock" % [body.temperature, body.water * 100.0, body.biomass * 100.0, "NO SURFACE INDUSTRY" if body.factory == "" else body.factory.to_upper() + " FACTORY", body.deposit]
+			if session.site_available(selected) and session.sites.has(selected) and session.sites[selected].state.landed:
+				telemetry.text = "%.1f K   /   SPATIAL INDUSTRY ACTIVE\n%d installations · protected local culture, not planetary terraforming" % [body.temperature, session.sites[selected].state.structures.size()]
 		else:
 			telemetry.text = "Unresolved composition.\nDeploy a survey probe before making plans."
 	view.show_body(body, chart, state.system)
@@ -260,9 +264,12 @@ func refresh_operations(body: Dictionary) -> void:
 			operations.add_child(wrapped("Characterise resources, climate, and the possibility of a living future."))
 			action_button("Survey body", "survey")
 		elif body.factory == "":
-			operations.add_child(wrapped("Factory modules carry their own power and automation. They remain here until reclaimed."))
 			var has_surface: bool = session.sites.has(selected) and session.sites[selected].state.landed
-			action_button("Land orbital-policy factory", "deploy", sim.state.ship.modules < 1 or has_surface, "Legacy climate/mining abstraction. Use Surface operations for spatial industry.")
+			if has_surface:
+				operations.add_child(wrapped("A module is committed to the surface sector. Its work continues during orbital time advances and travel. Surface recovery and freight are not yet implemented.", 14))
+			else:
+				operations.add_child(wrapped("Factory modules carry their own power and automation. Legacy orbital factories remain here until reclaimed."))
+				action_button("Land orbital-policy factory", "deploy", sim.state.ship.modules < 1, "Legacy climate/mining abstraction. Use Surface operations for spatial industry.")
 		else:
 			operations.add_child(wrapped("Autonomous industry active. Work continues until local feedstock runs out."))
 			if body.factory == "warming":
@@ -330,6 +337,8 @@ func request_travel() -> void:
 	for body in sim.state.bodies.values():
 		if body.system == sim.state.system and body.factory != "":
 			abandoned.append(body.name + " (" + body.factory + ")")
+		if body.system == sim.state.system and session.sites.has(body.id) and session.sites[body.id].state.landed:
+			abandoned.append(body.name + " (surface installation; finite stores)")
 	travel_dialog.dialog_text = "%d years will pass.\nCost: 18 reactor fuel, 65 propellant, 8 integrity.\n\nFactories left working: %s\n\nReturn travel has the same cost. Supplies are collected locally." % [sim.travel_quote().years, ", ".join(abandoned) if not abandoned.is_empty() else "none"]
 	travel_dialog.popup_centered(Vector2i(590, 250))
 

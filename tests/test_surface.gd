@@ -60,6 +60,21 @@ func _initialize() -> void:
 	check(site.command("survey", 0, 0).ok, "Survey is available")
 	check(site.cell_at(0, 0).scanned, "Survey updates ground knowledge")
 	check(not site.can_place("solar", 0, 0).ok, "Survey does not create a service connection")
+	var constrained = Surface.new()
+	constrained.command("land", 10, 10)
+	var blocked_refinery: Vector2i = place(constrained, "refinery")
+	constrained.advance(20)
+	var blocked_fabricator: Vector2i = place(constrained, "fabricator")
+	constrained.advance(20)
+	constrained.state.resources.ore = 20.0
+	constrained.summary()
+	check(not constrained.structure_at(blocked_fabricator.x, blocked_fabricator.y).powered, "Insufficient power sheds later loads")
+	var components_before: float = constrained.state.resources.components
+	constrained.advance(30)
+	check(constrained.state.resources.components == components_before, "Unpowered fabricator cannot create goods")
+	check(constrained.command("toggle", blocked_refinery.x, blocked_refinery.y).ok, "Suspend an operating load")
+	constrained.advance(20)
+	check(constrained.state.resources.components > components_before, "Freed power enables fabrication")
 	for kind in ["solar", "solar", "solar", "mine", "ice_well", "refinery", "fabricator", "refuge"]:
 		place(site, kind)
 		site.advance(22)
@@ -92,13 +107,15 @@ func _initialize() -> void:
 	var bulk = Surface.new()
 	bulk.restore_json(save)
 	bulk.advance(1000)
+	site.advance(1000)
 	for hour in range(1000):
 		restored.advance(1)
 	for resource in site.state.resources:
 		check(absf(bulk.state.resources[resource] - restored.state.resources[resource]) < 0.000001, "Chunk-independent " + resource)
+		check(absf(site.state.resources[resource] - restored.state.resources[resource]) < 0.000001, "Save/load preserves future " + resource)
 	check(bulk.state.total_hours == restored.state.total_hours, "Chunk-independent site clock")
 	bulk.advance(68 * 8766)
-	check(bulk.state.total_hours == site.state.total_hours + 1000 + 68 * 8766, "Interstellar interval is not silently capped")
+	check(bulk.state.total_hours == site.state.total_hours + 68 * 8766, "Interstellar interval is not silently capped")
 	check(bulk.state.resources.biomass == 0, "Finite life-support stores cannot sustain culture forever")
 	var session = Session.new()
 	check(session.surface_for("eir_iii") == null, "Surface requires local orbital survey")

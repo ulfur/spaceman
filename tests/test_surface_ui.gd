@@ -16,20 +16,35 @@ func capture(filename: String) -> void:
 	await RenderingServer.frame_post_draw
 	check(root.get_texture().get_image().save_png("res://build/" + filename) == OK, "Rendered screenshot " + filename)
 
+func click_position(position_value: Vector2) -> void:
+	# Go through GUI hit-testing, not just a manually emitted callback signal.
+	root.notify_mouse_entered()
+	var motion := InputEventMouseMotion.new()
+	motion.position = position_value
+	motion.global_position = position_value
+	root.push_input(motion, true)
+	for pressed in [true, false]:
+		var event := InputEventMouseButton.new()
+		event.position = position_value
+		event.global_position = position_value
+		event.button_index = MOUSE_BUTTON_LEFT
+		event.pressed = pressed
+		root.push_input(event, true)
+
+func click_control(node: Control) -> void:
+	click_position(node.get_global_transform_with_canvas() * (node.size / 2.0))
+
 func click_cell(cell: Vector2i) -> void:
 	var position_value: Vector3 = game.world.cell_position(cell.x, cell.y)
 	var screen: Vector2 = game.world.camera.unproject_position(position_value)
 	check(game.world.pick_cell(screen) == cell, "Camera picking agrees with rendered ground " + str(cell))
-	var event := InputEventMouseButton.new()
-	event.position = screen
-	event.button_index = MOUSE_BUTTON_LEFT
-	event.pressed = true
-	game.viewport_container.gui_input.emit(event)
+	click_position(game.viewport_container.get_global_transform_with_canvas() * screen)
 
 func build(kind: String) -> void:
 	var button: Button = game.find_child("Tool_" + kind, true, false)
 	check(button != null, "Tool visible: " + kind)
-	button.pressed.emit()
+	click_control(button)
+	check(game.tool == kind, "Hit-tested tool selection " + kind)
 	var chosen := Vector2i(-1, -1)
 	var best := 1000.0
 	for cell in game.site.state.cells:
@@ -53,9 +68,10 @@ func run() -> void:
 	root.add_child(game)
 	current_scene = game
 	await process_frame
-	game.find_child("Action_survey", true, false).pressed.emit()
+	click_control(game.find_child("Action_survey", true, false))
+	await process_frame
 	check(game.find_child("Surface", true, false) != null, "Orbital survey exposes surface entry")
-	game.find_child("Surface", true, false).pressed.emit()
+	click_control(game.find_child("Surface", true, false))
 	await process_frame
 	await process_frame
 	game = current_scene
@@ -70,10 +86,10 @@ func run() -> void:
 	check(game.site.state.landed, "Terrain click lands actual ship module")
 	for kind in ["solar", "solar", "solar", "mine", "ice_well", "refinery", "fabricator", "refuge"]:
 		build(kind)
-	game.find_child("Speed10", true, false).pressed.emit()
+	click_control(game.find_child("Speed10", true, false))
 	game._process(0.4)
 	check(game.speed == 10, "Speed control drives simulation")
-	game.find_child("Speed0", true, false).pressed.emit()
+	click_control(game.find_child("Speed0", true, false))
 	var hour: int = game.site.state.total_hours
 	game._process(2.0)
 	check(game.site.state.total_hours == hour, "Pause stops the authoritative clock")
@@ -84,18 +100,18 @@ func run() -> void:
 	game.world.zoom_camera(-20)
 	await capture("06-surface-industry.png")
 	check(game.get_global_rect().encloses(game.find_child("Toolbelt", true, false).get_global_rect()), "Toolbelt fits normal window")
-	game.find_child("ToggleStructure", true, false).pressed.emit()
+	click_control(game.find_child("ToggleStructure", true, false))
 	check(not game.site.structure_at(game.selected.x, game.selected.y).enabled, "Selected installation can be suspended")
 	root.size = Vector2i(1100, 760)
 	await capture("07-surface-compact.png")
 	check(game.get_global_rect().encloses(game.find_child("Toolbelt", true, false).get_global_rect()), "Toolbelt fits compact window")
 	var hours_before_return: int = game.site.state.total_hours
-	game.find_child("ReturnOrbit", true, false).pressed.emit()
+	click_control(game.find_child("ReturnOrbit", true, false))
 	await process_frame
 	await process_frame
 	game = current_scene
 	check(game.name == "Spaceman", "Return button restores orbital scene")
-	game.find_child("Surface", true, false).pressed.emit()
+	click_control(game.find_child("Surface", true, false))
 	await process_frame
 	await process_frame
 	game = current_scene
