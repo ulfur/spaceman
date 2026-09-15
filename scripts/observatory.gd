@@ -20,6 +20,7 @@ var provenance: Label
 var observe_buttons: Dictionary = {}
 var depart: Button
 var surface: Button
+var trials: Button
 var travel_dialog: ConfirmationDialog
 var reset_dialog: ConfirmationDialog
 var seed_input: SpinBox
@@ -138,6 +139,8 @@ func build_interface() -> void:
 	right.add_child(provenance)
 	surface = button("SURFACE OPERATIONS  /  3D →", open_surface, "ProspectSurface")
 	right.add_child(surface)
+	trials = button("FIELD TRIALS  /  ENGINEERING →", open_trials, "ProspectTrials")
+	right.add_child(trials)
 	var bottom := stack(area(Control.PRESET_BOTTOM_WIDE, Vector4(28, -200, -28, -22)))
 	bottom.add_child(label("OBSERVING PROGRAMMES     /     SHIP TIME AND REACTOR FUEL ARE COMMITTED IMMEDIATELY", 11, MUTED))
 	var tools_row := HBoxContainer.new()
@@ -199,6 +202,7 @@ func refresh() -> void:
 		observe_buttons[method].disabled = not allowed.ok or ship.fuel < cost.fuel or ship.alloy < cost.alloy
 		observe_buttons[method].tooltip_text = allowed.message
 	surface.visible = not data.is_empty() and session.site_available(selected + "_b")
+	trials.visible = surface.visible
 	if data.is_empty():
 		dossier.text = "REFERENCE SYSTEM\n\nThe original expedition route remains available. Enter local orbit to survey its bodies, operate orbital factories or collect supplies."
 		provenance.text = "Authored First Rain scenario."
@@ -212,6 +216,7 @@ func refresh() -> void:
 		dossier.text += "ATMOSPHERIC SPECTRUM\n%s\n\n" % data.get("spectrum_hint", "No targeted spectrum acquired.")
 		dossier.text += "STELLAR VARIABILITY\n%s\n\n" % (data.activity_band + " in sampled window; rare events unresolved." if data.has("activity_band") else "Unmeasured. Spectral type alone is insufficient.")
 		if data.records.has("probe"):
+			dossier.text += "ENVIRONMENTAL ESTIMATE\nAmbient %.1f K (grey model)\nCO₂ %.2f%% (molar)\n\n" % [data.ambient_k, data.co2_fraction * 100.0]
 			dossier.text += "LOCAL PROBE\nGravity %.2f g\nPressure %.3f bar\nAtmospheric column %.0f kg/m²\nField strength %.2f Earth\nRotation: %s\n\nSolar yield %.2f×\nOre richness %.2f×\nAccessible ice %.2f×\n\n" % [data.gravity, data.pressure, data.atmospheric_column, data.field_earth, "synchronous" if data.locked else "non-synchronous", data.solar_factor, data.ore_factor, data.ice_factor]
 			dossier.text += "RADIATION / LIFE\nSurface dose and native life unresolved. A field affects charged particles, not UV photons. A protected refuge is a separate goal."
 		else:
@@ -291,6 +296,12 @@ func open_surface() -> void:
 	session.surface_body = selected + "_b"
 	save()
 	get_tree().change_scene_to_file("res://scenes/surface.tscn")
+
+func open_trials() -> void:
+	if not session.site_available(selected + "_b"): return
+	session.surface_body = selected + "_b"
+	save()
+	get_tree().change_scene_to_file("res://scenes/testbeds.tscn")
 
 func request_reset() -> void:
 	seed_input.value = session.prospects.state.seed + 1

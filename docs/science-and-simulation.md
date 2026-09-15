@@ -2,6 +2,8 @@
 
 Design research, September 2026. This develops the intended game; it does not describe implemented physics. The original First Rain model remains a deliberately simplified test fixture.
 
+Implementation update: [Testbeds](testbeds.md) now exercises selected principles in a bounded chamber—gas inventory, thermal inertia, water phase changes, distinct shielding and biological requirements. Its documented approximations are narrower than the longer-term models proposed below.
+
 ## Governing principle
 
 Use the best tractable scientific model that produces understandable decisions. Simplify resolution and presentation before discarding mass, energy, causality, or relevant timescales. State the domain and limitations of each approximation.

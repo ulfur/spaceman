@@ -266,6 +266,8 @@ func refresh_operations(body: Dictionary) -> void:
 		operations.add_child(label_node(body.name, 23))
 		if session.site_available(selected):
 			operations.add_child(button("Surface operations  /  3D →", open_surface, "Surface"))
+			if body.get("generated", false):
+				operations.add_child(button("Field trials  /  engineering →", open_trials, "Trials"))
 			operations.add_child(wrapped("FIRST FOOTHOLD: survey, build and maintain a real surface installation.", 13, TEAL))
 		if not body.surveyed:
 			operations.add_child(wrapped("Characterise resources, climate, and the possibility of a living future."))
@@ -389,6 +391,11 @@ func _unhandled_key_input(event: InputEvent) -> void:
 
 func open_prospects() -> void:
 	get_tree().change_scene_to_file("res://scenes/prospects.tscn")
+
+func open_trials() -> void:
+	if not session.site_available(selected): return
+	session.surface_body = selected
+	get_tree().change_scene_to_file("res://scenes/testbeds.tscn")
 
 func show_legacy_chart() -> void:
 	if sim.state.system not in ["eir", "vesper"]:

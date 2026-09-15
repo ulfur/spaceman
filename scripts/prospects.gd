@@ -40,6 +40,16 @@ func reset(seed: int = 1701) -> void:
 			"locked": orbit < 0.15, "terrain_seed": rng.randi_range(1, 999999),
 			"spectrum_hint": "CO₂ absorption; pressure unresolved" if pressure > 0.2 else "Weak atmospheric features; composition unresolved"}
 		state.records[id] = {}
+		# Separate stream preserves all previously generated terrain/routes.
+		var atmosphere_rng := RandomNumberGenerator.new()
+		atmosphere_rng.seed = int(worlds[id].terrain_seed) * 97 + 41
+		var model: Dictionary = CONFIG.environment_model
+		worlds[id].co2_fraction = exp(atmosphere_rng.randf_range(log(model.co2_fraction[0]), log(model.co2_fraction[1])))
+		var co2_mass_fraction: float = worlds[id].co2_fraction * 44.0 / (28.0 + 16.0 * worlds[id].co2_fraction)
+		var co2_column: float = pressure * 100000.0 / (worlds[id].gravity * 9.81) * co2_mass_fraction
+		# A grey-atmosphere screening prior, not a spectral climate retrieval.
+		worlds[id].infrared_depth = minf(model.infrared_max, model.infrared_base + model.infrared_coefficient * pow(co2_column, model.infrared_exponent))
+		worlds[id].ambient_k = worlds[id].equilibrium_k * pow(1.0 + 0.75 * worlds[id].infrared_depth, 0.25)
 
 func definitions() -> Dictionary:
 	var result := {"systems": [], "bodies": []}
@@ -83,6 +93,8 @@ func evidence(id: String) -> Dictionary:
 		known.solar_factor = minf(1.8, world.flux)
 		known.equilibrium_k = world.equilibrium_k
 		known.atmospheric_column = world.pressure * 100000.0 / (world.gravity * 9.81)
+		known.co2_fraction = world.co2_fraction
+		known.ambient_k = world.ambient_k
 	return known
 
 func can_observe(id: String, method: String, current_system: String) -> Dictionary:
@@ -109,7 +121,10 @@ func surface_context(body_id: String) -> Dictionary:
 	for id in worlds:
 		if body_id == id + "_b":
 			var world: Dictionary = worlds[id]
-			return {"seed": world.terrain_seed, "solar_factor": minf(1.8, world.flux), "ore_factor": world.ore_factor, "ice_factor": world.ice_factor}
+			return {"seed": world.terrain_seed, "solar_factor": minf(1.8, world.flux), "ore_factor": world.ore_factor, "ice_factor": world.ice_factor,
+				"environment": {"flux": world.flux, "pressure": world.pressure, "gravity": world.gravity,
+					"field_earth": world.field_earth, "activity": world.activity, "co2_fraction": world.co2_fraction,
+					"ambient_k": world.ambient_k, "equilibrium_k": world.equilibrium_k}}
 	return {}
 
 func save_json() -> String:

@@ -1,0 +1,75 @@
+{
+  "area_m2": 16.0,
+  "volume_m3": 32.0,
+  "heat_capacity_j_k": 8000000.0,
+  "conductance_w_k": 35.0,
+  "infrared_emissivity": 0.16,
+  "solar_transmission": 0.65,
+  "heater_kw": 4.0,
+  "cooling_cop": 0.7,
+  "lamp_kw": 0.8,
+  "lamp_par_fraction": 0.35,
+  "pump_kw": 1.0,
+  "pump_mol_h": 80.0,
+  "leak_fraction_h": 0.002,
+  "service_components_t_h": 0.002,
+  "service_water_kg_h": 0.05,
+  "water_feed_kg_h": 1.0,
+  "water_capacity_kg": 20.0,
+  "culture": {
+    "minimum_k": 278.0,
+    "maximum_k": 310.0,
+    "minimum_co2_pa": 10.0,
+    "maximum_co2_pa": 10000.0,
+    "minimum_par_w_m2": 2.0,
+    "maximum_uv_index": 0.3,
+    "maximum_particle_index": 0.4,
+    "growth_fraction_h": 0.025,
+    "decay_fraction_h": 0.08,
+    "capacity_kg": 0.1,
+    "seed_kg": 0.001,
+    "packet_nutrients_kg": 0.005,
+    "nutrients_per_kg": 0.01,
+    "photosynthetic_efficiency": 0.01,
+    "chemical_energy_j_kg": 16000000.0,
+    "established_kg": 0.02,
+    "established_hours": 168
+  },
+  "upgrades": {
+    "filter": {
+      "label": "UV filter",
+      "cost": {
+        "metal": 4.0,
+        "components": 1.0
+      },
+      "hours": 8.0,
+      "uv_transmission": 0.02,
+      "light_transmission": 0.8
+    },
+    "canopy": {
+      "label": "Regolith canopy",
+      "cost": {
+        "ore": 4.0,
+        "metal": 8.0,
+        "components": 2.0
+      },
+      "hours": 16.0,
+      "uv_transmission": 0.001,
+      "light_transmission": 0.01
+    }
+  },
+  "history_interval_h": 6,
+  "history_samples": 96,
+  "regulator_co2_pa": 2000.0,
+  "capture_co2_kg_h": 0.5,
+  "radiation": {
+    "uv_quiet": 0.3,
+    "uv_activity": 3.0,
+    "uv_column_scale_kg_m2": 3000.0,
+    "particle_floor": 0.15,
+    "field_factor": 2.0,
+    "particle_column_scale_kg_m2": 1500.0,
+    "glazing_uv_transmission": 0.65,
+    "shield_column_scale_kg_m2": 100.0
+  }
+}

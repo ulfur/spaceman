@@ -79,6 +79,20 @@ jobs:
         run: |
           xvfb-run -a godot --path . --rendering-method gl_compatibility --audio-driver Dummy --script res://tests/test_prospects_ui.gd -- --smoke 2>&1 | tee build/prospects-ui.log
           if grep -E 'SCRIPT ERROR|Parse Error|ERROR:|FAIL:' build/prospects-ui.log; then exit 1; fi
+      - name: Physical testbeds and persistence tests
+        if: ${{ !cancelled() }}
+        timeout-minutes: 3
+        run: |
+          godot --headless --path . --script res://tests/test_testbeds.gd 2>&1 | tee build/testbeds.log
+          if grep -E 'SCRIPT ERROR|Parse Error|ERROR:|FAIL:' build/testbeds.log; then exit 1; fi
+      - name: Render and exercise field trials
+        if: ${{ !cancelled() }}
+        timeout-minutes: 3
+        env:
+          LIBGL_ALWAYS_SOFTWARE: "1"
+        run: |
+          xvfb-run -a godot --path . --rendering-method gl_compatibility --audio-driver Dummy --script res://tests/test_testbeds_ui.gd -- --smoke 2>&1 | tee build/testbeds-ui.log
+          if grep -E 'SCRIPT ERROR|Parse Error|ERROR:|FAIL:' build/testbeds-ui.log; then exit 1; fi
       - name: Preserve visual checks and test logs
         if: always()
         uses: actions/upload-artifact@v4

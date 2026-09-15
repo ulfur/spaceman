@@ -10,6 +10,8 @@ He is a braincast of the original commander: a digital mind adapted to life as a
 
 **Prospects** adds six generated systems to scout and visit. Buy orbit fits, spectra and stellar activity observations, compare dated evidence and travel reserves, then arrive, probe and open a new 3D region. Its sunlight and resource richness change actual factory output and deposits. See [Prospects controls and model](docs/prospects.md).
 
+**Testbeds** adds a physical environmental experiment to those regions. Build a chamber, control its heat and gas inventory, supply water and shielding, and test an archive culture against the resulting conditions. The engineering console plots real measurements; the same experiment keeps evolving when you leave. See [Testbeds controls, equations and limits](docs/testbeds.md).
+
 The broader goal spans a galactic map, star systems, planetary engineering, RTS-style surface industry, and eventually first-person robot embodiment. See [Game direction](docs/vision.md) for that vision and the distinction between current features and future work.
 
 The updated concept is an open-ended expedition simulation: observe distant systems, choose where to travel, develop an industrial plan, and discover the consequences. [Science and simulation](docs/science-and-simulation.md) records scientific constraints and speculative engineering; [Visual direction](docs/visual-direction.md) translates the concept-art direction into runtime goals. The [development roadmap](docs/roadmap.md) sets the order and acceptance tests for playable milestones.
@@ -32,7 +34,13 @@ A useful first production chain is solar → ore extractor + ice well → refine
 
 ### Scout another system
 
-Open **Prospects / observatory** from orbit. Click a star, run an **Orbit fit**, **Spectrum**, and **Activity watch** as useful, then review **Commit transit**. On arrival, a **Local probe** unlocks that planet's **Surface operations / 3D**. **Local orbit** exposes its industrial companion and the original ship-supply mechanics. Observation consumes time and fuel; a probe also consumes alloy. New expeditions can use a chosen neighbourhood seed. Saves now use version three and migrate both earlier formats.
+Open **Prospects / observatory** from orbit. Click a star, run an **Orbit fit**, **Spectrum**, and **Activity watch** as useful, then review **Commit transit**. On arrival, a **Local probe** unlocks that planet's **Surface operations / 3D**. **Local orbit** exposes its industrial companion and the original ship-supply mechanics. Observation consumes time and fuel; a probe also consumes alloy. New expeditions can use a chosen neighbourhood seed; that seed and the acquired evidence persist in the expedition save.
+
+### Run a field trial
+
+On a probed generated world, land a module and build **Testbed [9]** on its service network. Select the finished structure and open **Field trial**. Configure thermal control, atmospheric processing, water feed, lighting and protection; let the conditions settle before committing one archive packet. Compare the temperature, pressure and culture graphs as the trial responds. A UV filter and a regolith canopy have different effects, and an opaque shelter needs another light source.
+
+Testbeds draw actual surface power and service parts. Losing support can kill the culture. This first engineering pilot covers a 16 m² enclosure; regional/global terraforming remains on the roadmap. Saves use version four and migrate all three previous formats.
 
 ### Your first expedition
 
@@ -65,12 +73,14 @@ godot --headless --path . --editor --import
 godot --headless --path . --script res://tests/test_simulation.gd
 godot --headless --path . --script res://tests/test_surface.gd
 godot --headless --path . --script res://tests/test_prospects.gd
+godot --headless --path . --script res://tests/test_testbeds.gd
 godot --path . --script res://tests/test_ui.gd -- --smoke
 godot --path . --script res://tests/test_surface_ui.gd -- --smoke
 godot --path . --script res://tests/test_prospects_ui.gd -- --smoke
+godot --path . --script res://tests/test_testbeds_ui.gd -- --smoke
 ```
 
-The last three commands need a display and write screenshots to ignored `build/`. On a Linux CI machine, prefix them with `xvfb-run -a`. Smoke mode bypasses player saves.
+The last four commands need a display and write screenshots to ignored `build/`. On a Linux CI machine, prefix them with `xvfb-run -a`. Smoke mode bypasses player saves.
 
 ## Structure
 
@@ -85,6 +95,8 @@ The last three commands need a display and write screenshots to ignored `build/`
 | `data/surface.json` | Surface kit inventories and construction recipes |
 | `scripts/prospects.gd`, `data/prospects.json` | Generated worlds, observation evidence and programme costs |
 | `scripts/observatory.gd`, `scripts/prospect_map.gd` | Distant scouting, route review and destination selection |
+| `scripts/testbed_simulation.gd`, `data/testbeds.json` | Chamber gas, heat, water phases, exposure and archive-culture model |
+| `scripts/testbeds.gd`, `scripts/trial_diagram.gd` | Engineering orders, live schematic and measured history |
 | `scripts/space_view.gd` | Star chart and procedural viewport |
 | `shaders/planet.gdshader` | Rotating globe; ice, water, clouds, and life reflect state |
 | `tests/` | Simulation invariants and rendered expedition walkthrough |
@@ -94,6 +106,6 @@ The last three commands need a display and write screenshots to ignored `build/`
 
 This is an early gameplay prototype. It includes two authored systems plus six generated prospects, fifteen bodies, spatial surface industry, distant observing programmes and local probes. The original warming/mining factories, recovery and replacement, repairs, lifeseeding, stale remote observations and event history remain available alongside versioned saves.
 
-Climate and industrial quantities are deliberately simplified. This is not a physical climate or propulsion solver. The globe is a procedural shader; each 3D sector is a bounded region, not a full traversable planet. Its rovers illustrate activity rather than performing physical pathfinding. Prospects generates a small neighbourhood, not a full galaxy. Quantitative radiation hazards, exposed-life viability on generated worlds, walking robots, autonomous branching policies, detailed ship construction, upgrades, sound, and multiplayer remain future work.
+Climate and industrial quantities are deliberately simplified. The physical testbed is a bounded engineering model; global climate, propulsion and radiation dosimetry are not solved. The globe is a procedural shader; each 3D sector is a bounded region, not a full traversable planet. Its rovers illustrate activity rather than performing physical pathfinding. Prospects generates a small neighbourhood, not a full galaxy. Exposed-life viability on generated worlds, walking robots, autonomous branching policies, detailed ship construction, ship upgrades, sound, and multiplayer remain future work.
 
 There is no automatic website deployment and no third-party telemetry.

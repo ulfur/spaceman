@@ -1,6 +1,6 @@
 # First Foothold — implementation notes
 
-These notes describe the milestone-one foundation. [Prospects](prospects.md) adds generated landing regions, planet-dependent solar/deposit quantities and version-three saves; it preserves the construction and production rules below.
+These notes describe the milestone-one foundation. [Prospects](prospects.md) adds generated landing regions and planet-dependent solar/deposit quantities. [Testbeds](testbeds.md) adds the field chamber, key 9, engineering controls and version-four saves. Both preserve the construction and production rules below.
 
 ## What to play
 
