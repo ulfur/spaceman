@@ -10,6 +10,7 @@ extends RefCounted
 
 const SIZE := 20
 const CELL_SIZE := 4.0
+const Testbed = preload("res://scripts/testbed_simulation.gd")
 const SAVE_VERSION := 1
 static var CONFIG: Dictionary = JSON.parse_string(FileAccess.get_file_as_string("res://data/surface.json"))
 static var LINK_RANGE: float = CONFIG.link_range_cells
@@ -17,12 +18,14 @@ static var STORAGE: Dictionary = CONFIG.storage
 static var RECIPES: Dictionary = CONFIG.recipes
 
 var state: Dictionary
+var environment: Dictionary = {}
 var _network_dirty := true
 
 func _init(seed: int = 1701, context: Dictionary = {}) -> void:
 	reset(seed, context)
 
 func reset(seed: int = 1701, context: Dictionary = {}) -> void:
+	environment = context.get("environment", {}).duplicate(true)
 	var rng := RandomNumberGenerator.new()
 	rng.seed = seed
 	state = {"version": SAVE_VERSION, "seed": seed, "total_hours": 0,
@@ -79,6 +82,8 @@ func can_place(kind: String, x: int, z: int) -> Dictionary:
 		kind = "seed"
 	if not RECIPES.has(kind):
 		return _result(false, "Unknown construction plan.")
+	if kind == "testbed" and environment.is_empty():
+		return _result(false, "Testbeds require a local environmental probe on a generated prospect.")
 	if cell.is_empty():
 		return _result(false, "Select a cell in the landing sector.")
 	if not cell.scanned:
@@ -146,6 +151,8 @@ func command(action: String, x: int = -1, z: int = -1) -> Dictionary:
 		"connected": false, "powered": false, "efficiency": 0.0, "path_distance": 0.0,
 		"cycle": 0.0, "job_active": false, "queue": queue, "culture": 0.0,
 		"produced": 0.0})
+	if kind == "testbed":
+		state.structures[-1].trial = Testbed.create(environment)
 	state.next_id += 1
 	if kind == "seed":
 		state.landed = true
@@ -207,6 +214,8 @@ func _allocate_power() -> Dictionary:
 			structure.status = "No service link"
 			continue
 		var load: float = 0.75 if structure.progress < 1.0 else RECIPES[structure.kind].power
+		if structure.kind == "testbed" and structure.progress >= 1.0:
+			load = Testbed.load_kw(structure.trial)
 		demand += load
 		if load <= available + 0.000001:
 			structure.powered = true
@@ -232,6 +241,9 @@ func advance(hours: int) -> void:
 		if not changed and not _network_dirty:
 			# No clocks/weather/random events advance independently in this model;
 			# an unchanged hour proves the entire remaining interval is stationary.
+			for structure in state.structures:
+				if structure.kind == "testbed" and structure.progress >= 1.0:
+					Testbed.stationary_samples(structure.trial, state.total_hours, state.total_hours + remaining)
 			state.total_hours += remaining
 			break
 
@@ -239,6 +251,16 @@ func _step_hour() -> bool:
 	var changed := false
 	var biomass := 0.0
 	for structure in state.structures:
+		# Passive heat exchange, leakage and biology continue without power.
+		if structure.kind == "testbed" and structure.progress >= 1.0:
+			var established: bool = structure.trial.established
+			if Testbed.step(structure.trial, environment, cell_at(structure.x, structure.z).light, state.resources, structure.powered):
+				changed = true
+			Testbed.sample(structure.trial, state.total_hours)
+			structure.status = "Trial running" if structure.trial.operating else "Passive trial · power or service parts unavailable"
+			if not established and structure.trial.established:
+				_record("FIELD TRIAL: archive culture sustained for seven days. This is evidence for an enclosed pilot, not an exposed biosphere.")
+			continue
 		if not structure.powered:
 			if structure.culture > 0.0:
 				structure.culture = maxf(0.0, structure.culture - 1.0 / 48.0)
@@ -330,6 +352,8 @@ func _maintenance_jump(limit: int) -> int:
 		return 0
 	var consumers: Array = []
 	for structure in state.structures:
+		if structure.kind == "testbed":
+			return 0
 		if structure.culture > 0.0 and (not structure.powered or structure.culture < 1.0):
 			return 0
 		if not structure.powered:
@@ -465,6 +489,8 @@ func _valid_save(candidate: Dictionary) -> bool:
 			return false
 		if structure.kind == "ice_well" and candidate.cells[index].resource != "ice":
 			return false
+		if structure.kind == "testbed" and (environment.is_empty() or not Testbed.valid(structure.get("trial"), int(candidate.total_hours))):
+			return false
 		if structure.kind != "refuge" and structure.culture != 0.0:
 			return false
 		if structure.kind not in ["refinery", "fabricator"] and (structure.job_active or structure.cycle != 0.0):
@@ -478,3 +504,41 @@ func _valid_save(candidate: Dictionary) -> bool:
 		if not event is Dictionary or not event.has("hour") or not event.has("text") or not _integer(event.hour, 0, int(candidate.total_hours)) or not event.text is String:
 			return false
 	return true
+
+func testbed_at(id: int) -> Dictionary:
+	for structure in state.structures:
+		if structure.kind == "testbed" and structure.id == id:
+			return structure
+	return {}
+
+func trial_command(id: int, action: String, value: Variant = null) -> Dictionary:
+	var structure := testbed_at(id)
+	if structure.is_empty() or structure.progress < 1.0:
+		return _result(false, "Complete a testbed on the service network first.")
+	var trial: Dictionary = structure.trial
+	match action:
+		"thermal":
+			if not value is String or value not in ["passive", "heat", "cool", "auto"]: return _result(false, "Unsupported thermal mode.")
+			trial.thermal = value
+		"target_k", "target_bar", "shade":
+			var bounds: Array = {"target_k": [278.0, 310.0], "target_bar": [0.05, 1.0], "shade": [0.0, 0.95]}[action]
+			if not _number(value, bounds[0], bounds[1]): return _result(false, "Control value outside equipment limits.")
+			trial[action] = float(value)
+		"pressure_control", "feed_water", "lamp":
+			if not value is bool: return _result(false, "Control needs an on/off value.")
+			trial[action] = value
+		"filter", "canopy":
+			if trial[action] or trial.upgrade != "": return _result(false, "Upgrade already fitted or another installation is underway.")
+			var cost: Dictionary = Testbed.CONFIG.upgrades[action].cost
+			for resource in cost:
+				if state.resources[resource] < cost[resource]: return _result(false, "Upgrade needs %.1f %s." % [cost[resource], resource])
+			for resource in cost: state.resources[resource] -= cost[resource]
+			trial.upgrade = action
+			trial.upgrade_progress = 0.0
+		"inoculate":
+			return _result(false, "Inoculation must allocate a ship archive through the expedition.")
+		_:
+			return _result(false, "Unknown testbed command.")
+	_allocate_power()
+	_record("Testbed %d: %s revised." % [id, action.replace("_", " ")])
+	return _result(true, "Trial order accepted. Physical conditions respond over time.")

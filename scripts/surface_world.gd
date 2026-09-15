@@ -193,6 +193,10 @@ func refresh(surface_state: Dictionary) -> void:
 		var beacon: MeshInstance3D = node.get_node_or_null("Beacon")
 		if beacon != null:
 			beacon.material_override = material(Color("a8deca") if structure.powered and structure.enabled else Color("e18f53"), 0.0, true)
+		if structure.kind == "testbed":
+			var culture: MeshInstance3D = node.get_node("Culture")
+			culture.material_override = material(Color("57a87d") if structure.trial.biomass_kg > 0.002 else Color("735744"), 0.5)
+			node.get_node("Canopy").visible = structure.trial.canopy
 	_clear(links)
 	for destination in snapshot.structures:
 		if destination.kind == "seed" or not destination.connected:
@@ -271,6 +275,20 @@ func make_structure(kind: String, ghost: bool = false) -> Node3D:
 			glass.scale.y = 0.75
 			for side in [-1, 1]:
 				block(root, Vector3(side * 1.32, 0.9, 0), Vector3(0.35, 1.1, 1.8), dark)
+		"testbed":
+			var culture := block(root, Vector3(0, 0.38, 0), Vector3(2.9, 0.2, 2.9), copper)
+			culture.name = "Culture"
+			var glass := material(Color(0.35, 0.66, 0.68, 0.32), 0.12)
+			block(root, Vector3(0, 1.5, 0), Vector3(3.3, 2.2, 3.3), glass)
+			for x in [-1.7, 1.7]:
+				for z in [-1.7, 1.7]:
+					block(root, Vector3(x, 1.55, z), Vector3(0.12, 2.6, 0.12), ivory)
+			block(root, Vector3(0, 2.85, 0), Vector3(3.55, 0.15, 3.55), dark)
+			var canopy := block(root, Vector3(0, 3.12, 0), Vector3(3.6, 0.4, 3.6), material(Color("766957")))
+			canopy.name = "Canopy"
+			canopy.visible = false
+			for z in [-0.8, 0.8]:
+				cylinder(root, Vector3(-1.45, 0.9, z), 0.24, 1.2, copper)
 	var beacon := block(root, Vector3(1.4, 0.65, 1.4), Vector3(0.12, 0.65, 0.12), copper)
 	beacon.name = "Beacon"
 	return root

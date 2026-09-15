@@ -12,6 +12,7 @@ var expedition = Simulation.new(prospects.definitions())
 var sites: Dictionary = {}
 var fractional_hours := 0
 var surface_body := "eir_iii"
+var trial_id := -1
 var initialized := false
 
 static func get_shared() -> RefCounted:
@@ -27,6 +28,7 @@ func reset(seed: int = 1701) -> void:
 	sites.clear()
 	fractional_hours = 0
 	surface_body = "eir_iii"
+	trial_id = -1
 
 func site_available(id: String) -> bool:
 	var body: Dictionary = expedition.local_body(id)
@@ -117,7 +119,7 @@ func save_json() -> String:
 	var saved_sites: Dictionary = {}
 	for id in sites:
 		saved_sites[id] = JSON.parse_string(sites[id].save_json())
-	return JSON.stringify({"version": 3, "prospects": JSON.parse_string(prospects.save_json()), "expedition": JSON.parse_string(expedition.save_json()),
+	return JSON.stringify({"version": 4, "prospects": JSON.parse_string(prospects.save_json()), "expedition": JSON.parse_string(expedition.save_json()),
 		"sites": saved_sites, "fractional_hours": fractional_hours, "surface_body": surface_body}, "\t", true, true)
 
 func restore_json(contents: String) -> Dictionary:
@@ -130,7 +132,7 @@ func restore_json(contents: String) -> Dictionary:
 	if not (raw_version is float or raw_version is int) or not is_finite(float(raw_version)) or raw_version != floor(raw_version):
 		return {"ok": false, "message": "Unsupported save version."}
 	var version := int(raw_version)
-	if version not in [1, 2, 3]:
+	if version not in [1, 2, 3, 4]:
 		return {"ok": false, "message": "Unsupported save version."}
 	var orbital: Variant = candidate if version == 1 else candidate.get("expedition")
 	if not orbital is Dictionary:
@@ -143,14 +145,14 @@ func restore_json(contents: String) -> Dictionary:
 		return {"ok": false, "message": "Invalid expedition year."}
 	var now: int = (int(year) - 2400) * HOURS_PER_YEAR + int(remainder)
 	var staged_prospects = Prospects.new(int(Prospects.CONFIG.default_seed))
-	if version == 3:
+	if version >= 3:
 		if not candidate.get("prospects") is Dictionary:
 			return {"ok": false, "message": "Missing prospect evidence."}
 		var restored: Dictionary = staged_prospects.restore_json(JSON.stringify(candidate.prospects), now)
 		if not restored.ok:
 			return restored
 	var staged = Simulation.new(staged_prospects.definitions())
-	if version == 3:
+	if version >= 3:
 		var restored: Dictionary = staged.restore_json(JSON.stringify(orbital))
 		if not restored.ok:
 			return restored
@@ -195,6 +197,23 @@ func restore_json(contents: String) -> Dictionary:
 	fractional_hours = int(remainder)
 	surface_body = selected_body
 	return {"ok": true, "message": "Expedition, prospect evidence and surface installations restored."}
+
+func trial_command(id: int, action: String, value: Variant = null) -> Dictionary:
+	var site = surface_for(surface_body)
+	if site == null: return {"ok": false, "message": "Direct trial control requires a local probed site."}
+	if action != "inoculate": return site.trial_command(id, action, value)
+	var structure: Dictionary = site.testbed_at(id)
+	if structure.is_empty() or structure.progress < 1.0 or structure.trial.biomass_kg > 0.000000001:
+		return {"ok": false, "message": "Select a completed testbed without an existing live culture."}
+	if expedition.state.ship.seeds < 1:
+		return {"ok": false, "message": "No biological archive packets aboard Spaceship."}
+	var c: Dictionary = Surface.Testbed.CONFIG.culture
+	expedition.state.ship.seeds -= 1
+	structure.trial.biomass_kg += c.seed_kg
+	structure.trial.nutrients_kg += c.packet_nutrients_kg
+	structure.trial.archive_in_kg += c.seed_kg + c.packet_nutrients_kg
+	site._record("Testbed %d inoculated from one ship archive packet. Monitor the limiting conditions." % id)
+	return {"ok": true, "message": "Archive culture introduced. Survival now depends on the measured environment."}
 
 func load_disk() -> Dictionary:
 	initialized = true

@@ -6,8 +6,8 @@ const INK := Color("e1e1cf")
 const MUTED := Color("b1b7ac")
 const CYAN := Color("a1d6ca")
 const AMBER := Color("e2bc7e")
-const TOOLS := ["inspect", "survey", "land", "solar", "mine", "ice_well", "refinery", "fabricator", "refuge"]
-const LABELS := ["INSPECT", "SURVEY", "MODULE", "SOLAR", "EXTRACTOR", "ICE WELL", "REFINERY", "FABRICATOR", "REFUGE"]
+const TOOLS := ["inspect", "survey", "land", "solar", "mine", "ice_well", "refinery", "fabricator", "refuge", "testbed"]
+const LABELS := ["INSPECT", "SURVEY", "MODULE", "SOLAR", "EXTRACTOR", "ICE WELL", "REFINERY", "FABRICATOR", "REFUGE", "TESTBED"]
 var session = Session.get_shared()
 var site: RefCounted
 var world: Node3D
@@ -32,6 +32,7 @@ var event_label: Label
 var tool_buttons: Array[Button] = []
 var speed_buttons: Array[Button] = []
 var toggle_button: Button
+var trial_button: Button
 
 func _ready() -> void:
 	if not session.initialized:
@@ -128,6 +129,8 @@ func build_interface() -> void:
 	var title := label("SPACEMAN   /   FIRST FOOTHOLD", 23)
 	title.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	header.add_child(title)
+	if not site.environment.is_empty():
+		header.add_child(button("FIELD TRIALS →", open_trials, "FieldTrials"))
 	header.add_child(button("↑  ORBIT  ·  ESC", return_to_orbit, "ReturnOrbit"))
 	header.add_child(button("SAVE", save_game, "SaveSurface"))
 	stack.add_child(label(session.expedition.state.bodies[session.surface_body].name.to_upper() + "     /     LANDING SECTOR 01     /     SYNTHETIC PRESENCE", 12, CYAN))
@@ -159,6 +162,8 @@ func build_interface() -> void:
 	right_stack.add_child(detail)
 	toggle_button = button("TOGGLE OPERATION", toggle_selected, "ToggleStructure")
 	right_stack.add_child(toggle_button)
+	trial_button = button("OPEN FIELD TRIAL →", open_selected_trial, "OpenTrial")
+	right_stack.add_child(trial_button)
 	var bottom := margin_box(Control.PRESET_BOTTOM_WIDE, Vector4(28, -203, -28, -20))
 	var bottom_stack := VBoxContainer.new()
 	bottom_stack.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -189,12 +194,15 @@ func build_interface() -> void:
 		node.custom_minimum_size.y = 53
 		node.add_theme_font_size_override("font_size", 11)
 		node.toggle_mode = true
+		if TOOLS[index] == "testbed" and site.environment.is_empty():
+			node.disabled = true
+			node.tooltip_text = "Probe a generated prospect to obtain environmental measurements."
 		belt.add_child(node)
 		tool_buttons.append(node)
 	status = label("Choose surveyed ground near both ore and ice. Right-click cancels placement.", 13, CYAN)
 	status.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	bottom_stack.add_child(status)
-	bottom_stack.add_child(label("LMB select / place    ·    MMB drag to pan    ·    WHEEL zoom    ·    Q / E rotate    ·    SPACE pause    ·    0–8 tools", 11, MUTED))
+	bottom_stack.add_child(label("LMB select / place    ·    MMB drag to pan    ·    WHEEL zoom    ·    Q / E rotate    ·    SPACE pause    ·    0–9 tools", 11, MUTED))
 	set_speed(0)
 
 func set_speed(rate: int) -> void:
@@ -295,6 +303,7 @@ func update_clock() -> void:
 
 func update_detail() -> void:
 	toggle_button.visible = false
+	trial_button.visible = false
 	var cell: Dictionary = site.cell_at(selected.x, selected.y)
 	if cell.is_empty():
 		selection_title.text = "GROUND TELEMETRY"
@@ -316,6 +325,9 @@ func update_detail() -> void:
 			detail.text += "\nRepeating: " + ", ".join(structure.queue)
 		if structure.kind == "refuge":
 			detail.text += "\nConsumes 0.02 water + 0.002 components / h."
+		if structure.kind == "testbed":
+			trial_button.visible = structure.progress >= 1.0
+			detail.text += "\nTrial: %.1f K · %.3f bar\nLive culture %.1f g" % [structure.trial.temperature_k, Surface.Testbed.pressure(structure.trial), structure.trial.biomass_kg * 1000.0]
 		toggle_button.visible = structure.kind != "seed"
 		toggle_button.text = "SUSPEND OPERATION" if structure.enabled else "RESUME OPERATION"
 
@@ -341,6 +353,16 @@ func return_to_orbit() -> void:
 		return
 	get_tree().change_scene_to_file("res://scenes/main.tscn")
 
+func open_selected_trial() -> void:
+	var structure: Dictionary = site.structure_at(selected.x, selected.y)
+	if structure.get("kind") != "testbed": return
+	session.trial_id = int(structure.id)
+	open_trials()
+
+func open_trials() -> void:
+	set_speed(0)
+	if autosave(): get_tree().change_scene_to_file("res://scenes/testbeds.tscn")
+
 func _process(delta: float) -> void:
 	if site == null or speed == 0:
 		return
@@ -358,7 +380,7 @@ func _process(delta: float) -> void:
 func _unhandled_key_input(event: InputEvent) -> void:
 	if not event is InputEventKey or not event.pressed or event.echo:
 		return
-	if event.keycode >= KEY_0 and event.keycode <= KEY_8:
+	if event.keycode >= KEY_0 and event.keycode <= KEY_9:
 		set_tool(TOOLS[event.keycode - KEY_0])
 	else:
 		match event.keycode:
