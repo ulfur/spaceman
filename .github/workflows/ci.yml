@@ -166,6 +166,7 @@ jobs:
           unzip -q "$RUNNER_TEMP/godot/editor.zip" -d "$RUNNER_TEMP/godot"
           echo "$RUNNER_TEMP/godot/Godot.app/Contents/MacOS" >> "$GITHUB_PATH"
       - name: Import and exercise the native Mac window
+        timeout-minutes: 5
         run: |
           mkdir -p build
           touch build/.gdignore

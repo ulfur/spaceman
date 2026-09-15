@@ -7,6 +7,7 @@ func _draw() -> void:
 	if universe == null or not universe.active: return
 	var frame: Rect2 = universe.frame
 	var font := ThemeDB.fallback_font
+	var labels: Array[Rect2] = []
 	if universe.mode == "chart": return
 	if universe.show_guides:
 		for body in universe.session.expedition.scenario.bodies:
@@ -34,6 +35,7 @@ func _draw() -> void:
 			if body.system != universe.reference: continue
 			var fit := Mechanics.orbit(universe.session, id)
 			if body.kind == "moon" and universe.points.has(fit.parent) and point.distance_to(universe.points[fit.parent].point) < 20: continue
+			if body.kind != "moon" and universe.points.has(body.system) and point.distance_to(universe.points[body.system].point) < 18: continue
 			for child in universe.session.expedition.scenario.bodies:
 				if child.kind == "moon" and child.system == body.system and Mechanics.orbit(universe.session, child.id).parent == id and universe.points.has(child.id) and point.distance_to(universe.points[child.id].point) < 20: title += "  · moon"
 		var radius: float = universe.points[id].radius
@@ -41,9 +43,18 @@ func _draw() -> void:
 			for ring in range(4, 0, -1): draw_circle(point, ring * 3, Color(color, 0.018 * (5 - ring)))
 			draw_circle(point, 2.0, color)
 		if not universe.show_guides: continue
+		if stellar and id != universe.reference: continue
 		if radius < 30:
 			var offset := Vector2(14, -12)
-			if point.x > frame.end.x - 120: offset.x = -font.get_string_size(title, HORIZONTAL_ALIGNMENT_LEFT, -1, 14).x - 14
+			var extent := font.get_string_size(title, HORIZONTAL_ALIGNMENT_LEFT, -1, 14)
+			if point.x > frame.end.x - 120: offset.x = -extent.x - 14
+			for attempt in range(4):
+				var label_rect := Rect2(point + offset - Vector2(0, 14), Vector2(extent.x + 8, 20))
+				var overlaps := false
+				for occupied in labels:
+					if occupied.intersects(label_rect): overlaps = true
+				if not overlaps: labels.append(label_rect); break
+				offset.y += 22
 			draw_string(font, point + offset, title, HORIZONTAL_ALIGNMENT_LEFT, -1, 14, color)
 			if id == universe.selected: draw_arc(point, maxf(radius + 8.0, 10.0), 0, TAU, 48, Color("eaca92"), 1, true)
 	var ruler := frame.position + Vector2(14, frame.size.y - 26)

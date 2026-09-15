@@ -12,12 +12,17 @@ func run() -> void:
 	session.reset(); session.initialized = true
 	session.command("survey", "eir_iii")
 	for view in ["main", "system", "regions", "surface", "prospects", "testbeds"]:
+		print("Display check begins: ", view)
 		if view == "testbeds":
 			session.command("travel", "prospect_0")
 			session.observe("prospect_0", "probe")
 			session.surface_body = "prospect_0_b"
 		var game: Control = load("res://scenes/" + view + ".tscn").instantiate()
 		root.add_child(game); current_scene = game
+		# Hosted Macs expose Apple's CPU renderer. This gate tests native window
+		# state and HUD hit-testing; Linux walkthroughs render the full 3D frames.
+		if OS.get_name() == "macOS":
+			for control in root.find_children("*", "SubViewportContainer", true, false): control.stretch_shrink = 8
 		await process_frame
 		check(await Driver.click(self, game, "Fullscreen"), "Visible fullscreen control on " + view)
 		await create_timer(1.6).timeout

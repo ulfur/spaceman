@@ -1,8 +1,14 @@
 extends Node
 ## One native-window controller for all HUDs, including modal menus.
-signal mode_changed
 var previous_mode := Window.MODE_WINDOWED
 var changing := false
+
+func _ready() -> void:
+	get_tree().root.size_changed.connect(refresh_buttons)
+
+func refresh_buttons() -> void:
+	for control in get_tree().get_nodes_in_group("FullscreenButtons"):
+		control.text = "Windowed" if fullscreen() else "Full screen"
 
 static func shared(owner: Node) -> Node:
 	var root := owner.get_tree().root
@@ -45,7 +51,7 @@ func toggle() -> void:
 	# Cocoa's transition is asynchronous; read the resulting native mode.
 	await get_tree().create_timer(0.8).timeout
 	changing = false
-	mode_changed.emit()
+	refresh_buttons()
 	if fullscreen() != entering and DisplayServer.get_name() != "headless":
 		explain("The window manager did not accept full screen. If you are running inside Godot, stop the game and disable Embed Game on Play, then run in its own window. On a Mac you can also use the green window control.")
 
@@ -68,7 +74,5 @@ func add_button(row: HBoxContainer) -> void:
 	control.tooltip_text = "Full screen / windowed · Control–Command–F · Option/Alt–Return · F11"
 	control.pressed.connect(toggle)
 	row.add_child(control)
-	mode_changed.connect(func():
-		if is_instance_valid(control): control.text = "Windowed" if fullscreen() else "Full screen"
-	)
+	control.add_to_group("FullscreenButtons")
 	control.text = "Windowed" if fullscreen() else "Full screen"

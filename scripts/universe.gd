@@ -50,7 +50,9 @@ func _ready() -> void:
 	viewport.msaa_3d = Viewport.MSAA_2X
 	container.add_child(viewport)
 	world = Node3D.new(); viewport.add_child(world)
-	camera = Camera3D.new(); camera.fov = 45; camera.near = 0.01; camera.far = 10000000.0
+	# The normalization holds the focus 1000 units away. A bounded clip ratio
+	# keeps the Compatibility culling projection non-degenerate at every scale.
+	camera = Camera3D.new(); camera.fov = 45; camera.near = 1.0; camera.far = 100000.0
 	world.add_child(camera); camera.current = true
 	var environment := WorldEnvironment.new()
 	var env := Environment.new()

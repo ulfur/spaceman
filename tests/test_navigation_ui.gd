@@ -71,6 +71,8 @@ func run() -> void:
 	check(game.name == "Regions", "Planet approach exposes geographic selection")
 	check(universe.meshes.eir_iii.get_instance_id() == body_instance and universe.meshes.eir_iii.transform.is_equal_approx(pose), "Region overlay retains the planet without a replacement or rotation reset")
 	check(universe.direction.is_equal_approx(camera_pose), "Region overlay preserves the inspection camera")
+	await click("LocateRegion")
+	while universe.moving(): await process_frame
 	var region := Vector2i(48, 15)
 	var projected: Vector3 = game.globe.project(region)
 	Driver.point(root, game.globe.get_global_transform_with_canvas() * Vector2(projected.x, projected.y))
