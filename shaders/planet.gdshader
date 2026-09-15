@@ -56,9 +56,9 @@ void fragment() {
 			ground = mix(vec3(0.15, 0.17, 0.18), vec3(0.52, 0.47, 0.37), height) * (0.66 + pits * 0.38);
 		}
 		ground *= 0.83 + grain * 0.22 + ridge * 0.1;
-		float relief = height + grain * 0.016 + ridge * 0.05;
-		vec3 bumped = normalize(n + vec3(-dFdx(relief), -dFdy(relief), 0) * 36.0 * (1.0 - sea * warmth));
-		float diffuse = max(dot(bumped, sun), 0.0);
+		float relief = height * 0.38 + grain * 0.002 + ridge * 0.013;
+		vec3 bumped = normalize(n + vec3(-dFdx(relief), -dFdy(relief), 0) * 4.0 * (1.0 - sea * warmth));
+		float diffuse = max(dot(bumped, sun), 0.0) * smoothstep(-0.03, 0.12, dot(n, sun));
 		float daylight = max(dot(n, sun), 0.0);
 		vec3 cloud_p = rotate_world(n, phase * 0.016) * 5.4;
 		cloud_p.xz += vec2(sin(cloud_p.y * 2.3), cos(cloud_p.y * 1.6)) * 0.34;

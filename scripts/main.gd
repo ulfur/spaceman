@@ -68,6 +68,8 @@ func build_interface() -> void:
 	heading = UI.label("", 36)
 	scene.add_child(heading)
 	subtitle = UI.label("", 16, MUTED, true)
+	subtitle.custom_minimum_size.x = 222
+	subtitle.size_flags_horizontal = Control.SIZE_SHRINK_BEGIN
 	scene.add_child(subtitle)
 	var space := Control.new()
 	space.mouse_filter = Control.MOUSE_FILTER_IGNORE

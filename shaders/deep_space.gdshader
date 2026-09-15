@@ -11,7 +11,7 @@ void fragment() {
 	vec2 p = UV * vec2(aspect, 1.0) + drift * 0.005;
 	float cloud = noise(p * 5.0) * 0.55 + noise(p * 13.0) * 0.3 + noise(p * 38.0) * 0.15;
 	float band = exp(-pow((p.y + p.x * 0.43 - 0.91 + cloud * 0.14) * 4.0, 2.0));
-	vec3 color = vec3(0.019, 0.033, 0.048) + mix(vec3(0.05,0.032,0.024),vec3(0.015,0.075,0.11),cloud) * band * cloud * 0.8;
+	vec3 color = vec3(0.019, 0.033, 0.048) + mix(vec3(0.05,0.032,0.024),vec3(0.015,0.075,0.11),cloud) * band * cloud * 1.7;
 	for (int layer=0; layer<2; layer++) {
 		float scale = 150.0 + float(layer) * 94.0;
 		vec2 grid = p * scale + drift * float(layer) * 0.12;

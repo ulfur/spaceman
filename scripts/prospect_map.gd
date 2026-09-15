@@ -78,8 +78,8 @@ func _draw() -> void:
 		if id == hover_id:
 			draw_arc(point, 31, 0, TAU, 64, Color(color, 0.5), 1, true)
 		if id == selected:
-			draw_arc(point, 27, -0.6, 1.1, 30, Color("e2c58e"), 2, true)
-			draw_arc(point, 27, 2.54, 4.24, 30, Color("e2c58e"), 2, true)
+			draw_arc(point, 27, -0.6 + phase * 0.08, 1.1 + phase * 0.08, 30, Color("e2c58e"), 2, true)
+			draw_arc(point, 27, 2.54 + phase * 0.08, 4.24 + phase * 0.08, 30, Color("e2c58e"), 2, true)
 		if id == local:
 			draw_arc(point, 17, 0, TAU, 64, Color("a0d4c9"), 1.5, true)
 			draw_string(font, point + Vector2(-22, -25), "SPACESHIP", HORIZONTAL_ALIGNMENT_LEFT, -1, 10, Color("a0d4c9"))

@@ -228,7 +228,7 @@ static func build(kind: String, ghost: bool = false) -> Node3D:
 			var light_mat := finish("74c7b2").duplicate() as StandardMaterial3D
 			light_mat.emission_enabled = true
 			light_mat.emission = Color("74c7b2")
-			keep(box(root, Vector3(0, 2.64, -1.43), Vector3(2.74, 0.045, 0.06), light_mat), "GrowLight")
+			keep(box(root, Vector3(0, 2.64, -1.43), Vector3(2.74, 0.045, 0.06), light_mat), "LampStrip")
 	# Equipment identity accents and a separate operating beacon.
 	for x in [-1, 1]: box(root, Vector3(x * 1.71, 0.36, 0), Vector3(0.08, 0.035, 1.12), copper)
 	var beacon_mat := finish("77d6bc").duplicate() as StandardMaterial3D

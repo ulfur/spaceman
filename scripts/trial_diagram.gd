@@ -34,20 +34,21 @@ func build_chamber() -> void:
 	viewport = SubViewport.new()
 	viewport.size = Vector2i(800, 340)
 	viewport.own_world_3d = true
+	viewport.transparent_bg = true
 	viewport.msaa_3d = Viewport.MSAA_2X
 	scene_container.add_child(viewport)
 	var world := Node3D.new()
 	viewport.add_child(world)
 	var env_node := WorldEnvironment.new()
 	var env := Environment.new()
-	env.background_mode = Environment.BG_COLOR
-	env.background_color = Color("080f16")
+	env.background_mode = Environment.BG_CLEAR_COLOR
+	env.background_color = Color(0, 0, 0, 0)
 	env.ambient_light_source = Environment.AMBIENT_SOURCE_COLOR
 	env.ambient_light_sky_contribution = 0.0
 	env.ambient_light_color = Color("96b8bf")
 	env.ambient_light_energy = 0.65
 	env.tonemap_mode = Environment.TONE_MAPPER_FILMIC
-	env.glow_enabled = true
+	env.glow_enabled = false
 	env.glow_intensity = 0.22
 	env_node.environment = env
 	world.add_child(env_node)
@@ -66,6 +67,15 @@ func build_chamber() -> void:
 	world.add_child(chamber)
 	# Front glazing is omitted in the inspection cutaway. The experiment stays sealed.
 	chamber.get_node("Glazing").visible = false
+	var glass := StandardMaterial3D.new()
+	glass.albedo_color = Color(0.20, 0.47, 0.54, 0.16)
+	glass.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+	glass.roughness = 0.15
+	glass.metallic = 0.2
+	Art.box(chamber, Vector3(0, 1.72, -1.53), Vector3(3.04, 2.04, 0.018), glass)
+	Art.box(chamber, Vector3(-1.53, 1.72, 0), Vector3(0.018, 2.04, 3.04), glass)
+	var film := Art.box(chamber, Vector3(0, 2.73, 0), Vector3(2.96, 0.01, 2.96), glass)
+	film.name = "FilterFilm"
 	Art.shell(world, Vector3(0, -0.05, 0), Vector3(4.45, 0.16, 4.45), Art.finish("13242c", 0.4))
 	lamp = OmniLight3D.new()
 	lamp.position = Vector3(0, 2.3, 0)
@@ -92,9 +102,10 @@ func _process(delta: float) -> void:
 	culture.material_override.set_shader_parameter("liquid", 1.0 if trial.temperature_k > 273.15 and trial.water_kg > 0.1 else 0.0)
 	culture.material_override.set_shader_parameter("phase", phase if trial.operating else 0.0)
 	chamber.get_node("Canopy").visible = trial.canopy
+	chamber.get_node("FilterFilm").visible = trial.filter and not trial.canopy
 	chamber.get_node("Canopy").position = Vector3(0, 3.1, -0.65)
 	lamp.visible = trial.lamp and trial.operating
-	chamber.get_node("GrowLight").visible = lamp.visible
+	chamber.get_node("LampStrip").visible = lamp.visible
 	queue_redraw()
 
 func text_at(point: Vector2, text: String, font_size: int = 14, color: Color = INK) -> void:

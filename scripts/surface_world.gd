@@ -229,7 +229,7 @@ func refresh(surface_state: Dictionary) -> void:
 			var culture: MeshInstance3D = node.get_node("Culture")
 			var density: float = structure.trial.biomass_kg / 0.1 if structure.kind == "testbed" else structure.culture
 			culture.material_override.set_shader_parameter("density", clampf(density, 0.0, 1.0))
-			node.get_node("GrowLight").visible = active and (structure.kind == "refuge" or structure.trial.get("lamp", false))
+			node.get_node("LampStrip").visible = active and (structure.kind == "refuge" or structure.trial.get("lamp", false))
 			if structure.kind == "testbed":
 				node.get_node("Canopy").visible = structure.trial.canopy
 				culture.material_override.set_shader_parameter("liquid", 1.0 if structure.trial.temperature_k > 273.15 and structure.trial.water_kg > 0.1 else 0.0)
