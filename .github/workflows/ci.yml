@@ -38,6 +38,7 @@ jobs:
       - name: Import project and check scripts
         run: |
           mkdir -p build
+          touch build/.gdignore
           godot --headless --path . --editor --import 2>&1 | tee build/import.log
           godot --headless --path . --script res://tools/check_scripts.gd 2>&1 | tee -a build/import.log
           if grep -E 'SCRIPT ERROR|Parse Error|ERROR:|FAIL:' build/import.log; then exit 1; fi
