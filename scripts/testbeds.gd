@@ -232,7 +232,9 @@ func refresh() -> void:
 	buttons.Inoculate.disabled = not ready or t.biomass_kg > 0.000000001 or session.expedition.state.ship.seeds < 1
 	buttons.FitFilter.text = "UV FILTER FITTED" if t.filter else "FIT UV FILTER\n4 metal · 1 component · 8 h"
 	buttons.FitCanopy.text = "REGOLITH CANOPY FITTED" if t.canopy else "BUILD REGOLITH CANOPY\n4 ore · 8 metal · 2 components · 16 h"
-	progress.text = "%s\n%.1f g live · %.1f g detritus\n%.0f / 168 stable hours\n%.1f kWh used · %.1f kg CO₂ captured" % ["ENCLOSED TRIAL ESTABLISHED" if t.established else "ARCHIVE TRIAL", t.biomass_kg * 1000, t.detritus_kg * 1000, t.stable_hours, t.energy_kwh, t.captured_co2_kg]
+	var record: String = "ENCLOSED TRIAL ESTABLISHED" if t.established else "ARCHIVE TRIAL"
+	if t.established and t.biomass_kg < 0.000001: record = "CULTURE LOST / RECORD RETAINED"
+	progress.text = "%s\n%.1f g live · %.1f g detritus\n%.0f / 168 stable hours\n%.1f kWh used · %.1f kg CO₂ captured" % [record, t.biomass_kg * 1000, t.detritus_kg * 1000, t.stable_hours, t.energy_kwh, t.captured_co2_kg]
 	if t.upgrade != "": progress.text += "\n%s installation %d%%" % [Model.CONFIG.upgrades[t.upgrade].label, t.upgrade_progress * 100]
 
 func select_trial(id: int) -> void:

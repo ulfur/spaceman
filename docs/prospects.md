@@ -1,5 +1,7 @@
 # Prospects — milestone 2
 
+[Testbeds](testbeds.md) extends this foundation with synthetic native-gas composition, a grey ambient-temperature estimate, physical field experiments and version-four saves. The observation/route rules below remain in place.
+
 Prospects adds six generated systems to the two-system First Rain fixture. Each has a candidate terrestrial planet and an industrial companion. The same observation, route, inventory and surface-production rules apply to every prospect. The generator produces illustrative synthetic systems, not a catalogue of real stars or a statistically calibrated galaxy.
 
 ## Play
