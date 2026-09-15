@@ -138,7 +138,15 @@ func wide_view() -> void:
 func local_view() -> void:
 	frame_field(session.expedition.system_position(session.expedition.state.system), 0.0)
 
+func zoom_by(amount: float) -> void:
+	if camera_tween != null: camera_tween.kill()
+	zoom_power = clampf(zoom_power + amount, -13.0, 2.2)
+
 func _gui_input(event: InputEvent) -> void:
+	if event is InputEventMagnifyGesture:
+		zoom_by(log(maxf(event.factor, 0.01)) / log(2.0)); accept_event()
+	elif event is InputEventPanGesture:
+		zoom_by(-event.delta.y * 0.12); accept_event()
 	if event is InputEventMouseMotion:
 		if event.button_mask & (MOUSE_BUTTON_MASK_MIDDLE | MOUSE_BUTTON_MASK_RIGHT):
 			session.chart_center -= event.relative / Vector2(chart_scale(), -chart_scale())

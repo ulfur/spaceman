@@ -11,13 +11,7 @@ func refresh_buttons() -> void:
 		control.text = "Windowed" if fullscreen() else "Full screen"
 
 static func shared(owner: Node) -> Node:
-	var root := owner.get_tree().root
-	var service := root.get_node_or_null("DisplayControls")
-	if service == null:
-		service = load("res://scripts/display_controls.gd").new()
-		service.name = "DisplayControls"
-		root.add_child(service)
-	return service
+	return owner.get_tree().root.get_node("DisplayControls")
 
 static func is_shortcut(event: InputEvent) -> bool:
 	if not event is InputEventKey or not event.pressed or event.echo: return false

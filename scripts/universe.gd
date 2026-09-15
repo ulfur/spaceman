@@ -30,14 +30,15 @@ var last_seed := -1
 var show_guides := true
 var frame := Rect2()
 var frame_target := Rect2()
+var zoom_target := -1.0
+var hovered := ""
+var contact_hits: Dictionary = {}
+var survey_layer := "solar"
 
 static func shared(owner: Node) -> Node:
-	var service := owner.get_tree().root.get_node_or_null("Universe")
-	if service == null:
-		service = load("res://scripts/universe.gd").new()
-		service.name = "Universe"
-		owner.get_tree().root.add_child(service)
-	return service
+	# Engine autoloads enter the tree before the main scene. Never attach a
+	# sibling to root from a scene's _ready(): root is still setting up children.
+	return owner.get_tree().root.get_node("Universe")
 
 func _ready() -> void:
 	layer = -1
@@ -69,10 +70,11 @@ func _ready() -> void:
 	add_child(overlay)
 	get_tree().root.size_changed.connect(layout)
 	layout()
+	suspend()
 
 func layout() -> void:
 	var extent := get_tree().root.get_visible_rect().size
-	frame_target = Rect2(28, 202, maxf(300, extent.x - 444), maxf(320, extent.y - 326))
+	frame_target = Rect2(28, 202, maxf(300, extent.x - 444), maxf(260, extent.y - 388))
 	frame = frame_target
 	container.position = frame.position; container.size = frame.size
 	overlay.size = extent
@@ -149,21 +151,25 @@ func ensure_mesh(id: String, stellar: bool) -> void:
 
 func system_view(id: String) -> void:
 	prepare(id); mode = "system"; tracking = ""
+	clear_survey()
 	var radius := 1.0
 	for body in session.expedition.scenario.bodies:
 		if body.system == id and positions.has(body.id): radius = maxf(radius, Mechanics.orbit(session, body.id).au)
 	fly([0.0, 0.0, 0.0], radius * 3.05, Vector3(0, 0.95, 1).normalized())
 
-func body_view(id: String, regional: bool = false) -> void:
+func body_view(id: String, regional: bool = false, approach: bool = true) -> void:
 	var system: String = session.expedition.state.bodies[id].system
 	prepare(system)
-	var retain := selected == id and mode in ["orbit", "regions"]
+	var next_mode := "regions" if regional else "orbit"
+	var retain := selected == id and mode == next_mode
 	selected = id; mode = "regions" if regional else "orbit"
-	if retain:
+	if not regional: clear_survey()
+	if retain or not approach:
 		render_frame()
 		return
 	tracking = id
-	fly(positions[id], radii[id] * 3.3, day_direction(id))
+	if regional: focus_region(id, session.surface_region)
+	else: family_view(id)
 
 func day_direction(id: String) -> Vector3:
 	var sun := Mechanics.sun_direction(session, id, session.elapsed_hours())
@@ -172,6 +178,7 @@ func day_direction(id: String) -> Vector3:
 func chart_view(center: Vector2, pixels_per_ly: float, first: bool = false) -> void:
 	prepare(session.viewed_system if session.viewed_system != "" else session.expedition.state.system)
 	mode = "chart"; tracking = ""
+	clear_survey()
 	var origin: Vector2 = session.expedition.system_position(reference)
 	var at := [(float(center.x) - origin.x) * Mechanics.LY_AU, 0.0, -(float(center.y) - origin.y) * Mechanics.LY_AU]
 	var radius := frame.size.y * Mechanics.LY_AU / (2.0 * tan(deg_to_rad(camera.fov * 0.5)) * pixels_per_ly)
@@ -189,6 +196,7 @@ func family_view(id: String) -> void:
 	fly(positions[parent], radius, Vector3(0.2, 0.65, 1).normalized())
 
 func fly(at: Array, radius: float, toward: Vector3) -> void:
+	zoom_target = -1.0
 	if camera_tween != null: camera_tween.kill()
 	if not initialized or DisplayServer.get_name() == "headless":
 		focus = at.duplicate(); distance = radius; direction = toward; initialized = true; render_frame(); return
@@ -211,8 +219,11 @@ func fly(at: Array, radius: float, toward: Vector3) -> void:
 func moving() -> bool:
 	return camera_tween != null and camera_tween.is_running()
 
-func _process(_delta: float) -> void:
+func _process(delta: float) -> void:
 	if not active: return
+	if zoom_target > 0:
+		distance = exp(lerpf(log(distance), log(zoom_target), 1.0 - exp(-delta * 18.0)))
+		if absf(log(distance / zoom_target)) < 0.0001: distance = zoom_target; zoom_target = -1.0
 	if last_hours != session.elapsed_hours():
 		update_ephemeris()
 	# HUD refreshes can update the ephemeris before this process callback. Follow
@@ -250,7 +261,81 @@ func render_frame() -> void:
 		var angular_pixels: float = r / maxf(0.01, projected.z) * frame.size.y / (2.0 * tan(deg_to_rad(camera.fov * 0.5)))
 		node.visible = projected.z > 0 and angular_pixels > 0.45 and angular_pixels < frame.size.y * 5.0
 		if projected.z > 0 and frame.grow(40).has_point(point): points[id] = {"point": point, "radius": angular_pixels}
+	update_contacts()
 	overlay.queue_redraw()
+
+func title(id: String) -> String:
+	return session.expedition.state.bodies[id].name if session.expedition.state.bodies.has(id) else session.expedition.system_name(id)
+
+func contact_distance(id: String) -> String:
+	if not positions.has(id): return "Unresolved"
+	var origin: Array = positions.get(selected, focus)
+	return Mechanics.distance_text(Mechanics.vector(Mechanics.subtract(positions[id], origin)).length())
+
+func occluded(id: String) -> bool:
+	var destination := normalized_position(positions[id]) - camera.position
+	var length_value := destination.length()
+	var ray := destination.normalized()
+	for other in points:
+		if other == id or points[other].radius < 8: continue
+		var center := normalized_position(positions[other]) - camera.position
+		var along := center.dot(ray)
+		if along <= 0 or along >= length_value: continue
+		var radius: float = radii[other] / distance * 1000.0
+		if (center - ray * along).length() < radius: return true
+	return false
+
+func update_contacts() -> void:
+	contact_hits.clear()
+	if mode == "chart": return
+	var ids: Array[String] = [reference]
+	for body in session.expedition.scenario.bodies:
+		if body.system == reference and positions.has(body.id): ids.append(body.id)
+	var occupied: Array[Rect2] = []
+	var bounds := frame.grow(-30)
+	for id in ids:
+		var projected := project_body(id)
+		var on_screen := points.has(id) and bounds.has_point(projected)
+		if on_screen and session.expedition.state.bodies.has(id):
+			var body: Dictionary = session.expedition.state.bodies[id]
+			var parent: String = Mechanics.orbit(session, id).parent
+			if points.has(parent) and projected.distance_to(points[parent].point) < 20: continue
+		if on_screen and occluded(id): continue
+		if not on_screen:
+			if mode == "system": continue
+			var relative := camera.basis.inverse() * (normalized_position(positions[id]) - camera.position)
+			var bearing := Vector2(relative.x, -relative.y)
+			if bearing.length() < 0.0001: bearing = Vector2.UP
+			bearing = bearing.normalized()
+			var half := bounds.size * 0.5
+			var reach := minf(half.x / maxf(absf(bearing.x), 0.0001), half.y / maxf(absf(bearing.y), 0.0001))
+			projected = bounds.get_center() + bearing * reach
+			# Separate edge instruments only; physical body positions never move.
+			for attempt in range(8):
+				var overlap := false
+				for taken in occupied:
+					if taken.has_point(projected): overlap = true
+				if not overlap: break
+				if absf(bearing.x) > absf(bearing.y): projected.y = clampf(projected.y + 44, bounds.position.y, bounds.end.y)
+				else: projected.x = clampf(projected.x + 114, bounds.position.x, bounds.end.x)
+		var radius: float = points[id].radius if on_screen else 0.0
+		contact_hits[id] = {"point": projected, "radius": radius, "edge": not on_screen}
+		occupied.append(Rect2(projected - Vector2(100, 38), Vector2(200, 76)))
+
+func pick_contact(pixel: Vector2, exclude: String = "") -> String:
+	if not frame.has_point(pixel): return ""
+	var found := ""
+	var best := INF
+	for id in contact_hits:
+		if id == exclude: continue
+		var hit: Dictionary = contact_hits[id]
+		var delta: float = pixel.distance_to(hit.point)
+		var limit := maxf(18.0, hit.radius)
+		if delta > limit: continue
+		# Resolve small contact markers before a large planet silhouette.
+		var score := delta / limit + (1.0 if hit.radius > 20 else 0.0)
+		if score < best: found = id; best = score
+	return found
 
 func turn(delta: Vector2) -> void:
 	if moving(): camera_tween.kill()
@@ -261,18 +346,31 @@ func turn(delta: Vector2) -> void:
 	render_frame()
 
 func zoom(factor: float) -> void:
+	if moving(): camera_tween.kill()
 	var minimum: float = radii.get(tracking, 0.00001) * 1.15
-	fly(focus, clampf(distance * factor, minimum, 1000000.0 * Mechanics.LY_AU), direction)
+	var start := zoom_target if zoom_target > 0 else distance
+	zoom_target = clampf(start * factor, minimum, 1000000.0 * Mechanics.LY_AU)
+	# Input changes the range immediately, then settles without restarting an
+	# easing curve. High-frequency wheel/pinch events accumulate toward a goal.
+	distance = exp(lerpf(log(distance), log(zoom_target), 0.22))
+	render_frame()
 
 func focus_region(id: String, region: Vector2i) -> void:
-	fly(positions[id], radii[id] * 3.3, Mechanics.orientation(session, id, session.elapsed_hours()) * Mechanics.normal(region))
+	tracking = id
+	fly(positions[id], radii[id] * 2.6, Mechanics.orientation(session, id, session.elapsed_hours()) * Mechanics.normal(region))
 
 func project_region(id: String, region: Vector2i) -> Vector3:
-	var n := Mechanics.orientation(session, id, session.elapsed_hours()) * Mechanics.normal(region)
+	return project_normal(id, Mechanics.normal(region))
+
+func project_normal(id: String, normal_value: Vector3) -> Vector3:
+	var n := Mechanics.orientation(session, id, session.elapsed_hours()) * normal_value
 	var center := normalized_position(positions[id])
 	var r: float = radii[id] / distance * 1000.0
 	var point := camera.unproject_position(center + n * r) + frame.position
 	return Vector3(point.x, point.y, n.dot((camera.position - center - n * r).normalized()))
+
+func clear_survey() -> void:
+	for material in materials.values(): material.set_shader_parameter("survey_mode", 0)
 
 func pick_region(id: String, pixel: Vector2) -> Vector2i:
 	var ray := camera.project_ray_normal(pixel - frame.position)

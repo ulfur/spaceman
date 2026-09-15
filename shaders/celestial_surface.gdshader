@@ -9,6 +9,9 @@ uniform float air = 0.0;
 uniform float cloud_phase = 0.0;
 uniform bool rocky = false;
 uniform vec3 sun_direction = vec3(1, 0, 0);
+// Instrument data, supplied from the same region priors as the inspector.
+uniform int survey_mode = 0;
+uniform sampler2D survey_data : filter_nearest, repeat_disable;
 varying vec3 body_normal;
 varying vec3 world_normal;
 float hash(vec3 p) {
@@ -62,5 +65,18 @@ void fragment() {
 	float rim = pow(1.0 - max(dot(n, eye), 0.0), 4.0) * atmosphere;
 	color += vec3(0.16, 0.40, 0.67) * rim * (0.01 + diffuse * 0.65);
 	color += vec3(0.57, 0.16, 0.035) * exp(-abs(day) * 30.0) * rim * 0.45;
+	if (survey_mode > 0) {
+		vec2 geo = vec2((atan(surface.x, surface.z) + PI) / TAU, (PI * 0.5 - asin(surface.y)) / PI);
+		vec3 priors = texture(survey_data, geo).rgb;
+		float value = survey_mode == 1 ? priors.r : (survey_mode == 2 ? priors.g : priors.b);
+		float level = clamp(value / 2.5, 0.0, 1.0);
+		vec3 heat = mix(vec3(0.018, 0.085, 0.14), vec3(0.08, 0.62, 0.67), smoothstep(0.0, 0.6, level));
+		heat = mix(heat, vec3(0.96, 0.73, 0.34), smoothstep(0.5, 1.0, level));
+		vec2 cell = fract(geo * vec2(72.0, 36.0));
+		float grid = 1.0 - smoothstep(0.0, 0.018, min(min(cell.x, 1.0 - cell.x), min(cell.y, 1.0 - cell.y)));
+		// Emissive instrument overlay remains readable on the night hemisphere;
+		// the terminator still shows actual illumination beneath the map.
+		color = heat * (0.65 + diffuse * 0.35) + color * 0.18 + vec3(0.15, 0.48, 0.55) * grid * 0.18;
+	}
 	ALBEDO = color;
 }

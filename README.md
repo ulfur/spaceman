@@ -14,7 +14,9 @@ He is a braincast of the original commander: a digital mind adapted to life as a
 
 The **interface pass** reorganises these features into a star chart, orbital view, surface workspace and field-trial console with shared navigation and contextual controls. See [screen layout and controls](docs/interface.md).
 
-The **physical space** pass replaces screenshot zooms with a persistent 3D scene, physical body sizes and distances, mass-dependent orbital periods and a shared geographic lighting frame. Inspect planetary families with **Moons**, then return with **Planet**. See [physical space, controls and model limits](docs/physical-space.md).
+The **physical space** pass replaces screenshot zooms with a persistent 3D scene, physical body sizes and distances, mass-dependent orbital periods and a shared geographic lighting frame. Inspect planetary families with **Planet + moons**, then approach a target with **Focus**. See [physical space, controls and model limits](docs/physical-space.md).
+
+The **command navigation** pass fixes normal startup and makes contacts, edge bearings, wheel/pinch/trackpad zoom and visible zoom controls work across astronomical views. Orbit opens at the planetary-family scale; surface survey compares geographic Solar / Ore / Ice layers before landing. See [navigation controls and display meaning](docs/command-navigation.md).
 
 The broader goal spans a galactic map, star systems, planetary engineering, RTS-style surface industry, and eventually first-person robot embodiment. See [Game direction](docs/vision.md) for that vision and the distinction between current features and future work.
 
@@ -58,7 +60,7 @@ You begin with enough transit reserves for one round trip even without mining. F
 
 ## Builds and CI
 
-A native macOS job tests fullscreen and window restoration in all six workspaces. Pull requests also run a headless simulation suite and an actual rendered UI expedition under Xvfb, with screenshots saved as the **expedition-checks** artifact. Successful runs also export **spaceman-web** and **spaceman-linux** artifacts in [GitHub Actions](https://github.com/ulfur/spaceman/actions).
+CI launches the actual game with fresh and restored generated-system saves. A native macOS job exercises navigation gestures, targeting and fullscreen and window restoration in all six workspaces. Pull requests also run a headless simulation suite and an actual rendered UI expedition under Xvfb, with screenshots saved as the **expedition-checks** artifact. Successful runs also export **spaceman-web** and **spaceman-linux** artifacts in [GitHub Actions](https://github.com/ulfur/spaceman/actions).
 
 To play the browser artifact, extract it and serve that directory over HTTP:
 
@@ -85,9 +87,11 @@ godot --path . --script res://tests/test_surface_ui.gd -- --smoke
 godot --path . --script res://tests/test_prospects_ui.gd -- --smoke
 godot --path . --script res://tests/test_testbeds_ui.gd -- --smoke
 godot --path . --fixed-fps 20 --script res://tests/test_navigation_ui.gd -- --smoke
+godot --path . --script res://tests/test_command_ui.gd -- --smoke
+godot --path . --script res://tests/test_display_ui.gd -- --smoke
 ```
 
-The last five commands need a display and write screenshots to ignored `build/`. On a Linux CI machine, prefix them with `xvfb-run -a`. Smoke mode bypasses player saves.
+The last seven commands need a display and write screenshots to ignored `build/`. On a Linux CI machine, prefix them with `xvfb-run -a`. Smoke mode bypasses player saves.
 
 ## Structure
 
@@ -109,8 +113,9 @@ The last five commands need a display and write screenshots to ignored `build/`.
 | `scripts/system.gd`, `scripts/system_map.gd` | Planet and moon hierarchy with spatial selection |
 | `scripts/regions.gd`, `scripts/region_globe.gd` | Geographic picking and persistent foothold markers |
 | `scripts/navigation.gd` | Camera transitions between simulation scales |
-| `scripts/space_view.gd` | Procedural planetary viewport |
-| `shaders/planet.gdshader` | Rotating globe; ice, water, clouds, and life reflect state |
+| `scripts/universe.gd`, `scripts/display_controls.gd` | Presentation autoloads for the persistent scene and native window |
+| `scripts/space_view.gd` | Shared map input, targeting and camera controls |
+| `shaders/celestial_surface.gdshader` | Physical globe lighting and geographic screening layers |
 | `tests/` | Simulation invariants and rendered expedition walkthrough |
 | `docs/design.md` | Concept, model assumptions, boundaries, and next milestones |
 
