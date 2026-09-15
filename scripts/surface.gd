@@ -30,6 +30,7 @@ var build_hint: Label
 var power: Label
 var tool_buttons: Dictionary = {}
 var inspector_panel: Control
+var detail_scroll: ScrollContainer
 var selection_page: VBoxContainer
 var build_page: VBoxContainer
 var build_open := false
@@ -96,12 +97,15 @@ func build_interface() -> void:
 	supplies.add_child(power)
 	var inspector := UI.inspector(self, 149, -111)
 	inspector_panel = inspector.get_parent()
+	inspector_panel.size_flags_vertical = Control.SIZE_SHRINK_BEGIN
 	var title_row := UI.row(inspector)
 	selection_title = UI.label("", 22)
 	selection_title.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	title_row.add_child(selection_title)
 	title_row.add_child(button("×", dismiss_inspector, "CloseInspector"))
 	var content := UI.scroll(inspector, "SurfaceDetailsScroll")
+	detail_scroll = content.get_parent()
+	content.resized.connect(fit_inspector)
 	selection_page = UI.column(content)
 	detail = UI.label("", 16, INK, true)
 	selection_page.add_child(detail)
@@ -231,10 +235,11 @@ func refresh() -> void:
 
 func update_clock() -> void:
 	if time_label != null and site != null:
-		time_label.text = "Year %d · %d h · %s" % [session.expedition.state.year, session.fractional_hours, "Paused" if speed == 0 else "%d h/s" % speed]
+		time_label.text = "Year %d + %d h · %s" % [session.expedition.state.year, session.fractional_hours, "Paused" if speed == 0 else "%d h/s" % speed]
 		time_label.tooltip_text = "Site hour %d. Time advances the entire expedition." % site.state.total_hours
 
 func update_detail() -> void:
+	fit_inspector.call_deferred()
 	toggle_button.visible = false
 	trial_button.visible = false
 	selection_page.visible = not build_open
@@ -356,7 +361,7 @@ func recipe_description(kind: String) -> String:
 	var recipe: Dictionary = Surface.RECIPES["seed" if kind == "land" else kind]
 	if kind == "land": return "1 onboard module · %d available" % session.expedition.state.ship.modules
 	var costs: Array[String] = []
-	for resource in recipe.cost: costs.append("%.0f %s" % [recipe.cost[resource], "parts" if resource == "components" else resource])
+	for resource in recipe.cost: costs.append("%.0f t %s" % [recipe.cost[resource], "parts" if resource == "components" else resource])
 	return "%s\n%.0f base hours · %.1f kW load" % [" · ".join(costs), recipe.hours, recipe.power]
 
 func toggle_build() -> void:
@@ -382,3 +387,8 @@ func open_chart() -> void:
 
 func show_help() -> void:
 	UI.text_dialog(self, "Surface controls", "Click terrain or machinery to inspect it.\nB opens the build palette. Choose equipment, then place it.\nHold Shift to place multiple installations.\nRight-click or Esc cancels placement.\n\n1 surveys ground; 0 returns to inspection.\n2–9 select equipment directly.\nMiddle-drag pans · Wheel zooms · Q / E rotate.\nSpace pauses. Each 1× is one simulated hour per second.\nEsc dismisses the inspector before returning to orbit.\n\nSelect a finished testbed to open its field trial.")
+
+func fit_inspector() -> void:
+	if not inspector_panel.visible: return
+	var page: VBoxContainer = build_page if build_open else selection_page
+	detail_scroll.custom_minimum_size.y = clampf(page.get_combined_minimum_size().y, 60, maxf(60, size.y - 456))

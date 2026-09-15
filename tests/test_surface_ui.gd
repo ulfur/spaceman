@@ -47,6 +47,7 @@ func click_cell(cell: Vector2i) -> void:
 func build(kind: String) -> void:
 	check(await Driver.click(self, game, "BuildPalette"), "Open build palette")
 	check(await Driver.click(self, game, "BuildLifesupport" if kind in ["refuge", "testbed"] else "BuildIndustry"), "Choose build category")
+	if kind == "refuge": await capture("21-surface-build-palette.png")
 	check(await Driver.click(self, game, "Tool_" + kind), "Select equipment")
 	check(game.tool == kind, "Hit-tested tool selection " + kind)
 	var chosen := Vector2i(-1, -1)

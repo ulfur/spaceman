@@ -2,9 +2,11 @@
 
 These notes describe the milestone-one foundation. [Prospects](prospects.md) adds generated landing regions and planet-dependent solar/deposit quantities. [Testbeds](testbeds.md) adds the field chamber, key 9, engineering controls and version-four saves. Both preserve the construction and production rules below.
 
+The [interface pass](interface.md) groups the tools into a build palette and gives the selected terrain or machine one contextual inspector.
+
 ## What to play
 
-Survey Eir III in the orbital view, then enter **Surface operations / 3D**. Do this before deploying a legacy orbital-policy factory. If one is already present in a saved expedition, reclaim it first. The other bodies still use the original orbital abstraction.
+Survey Eir III in the orbital view, then enter **Choose a landing site**. Do this before deploying a legacy orbital-policy factory. If one is already present in a saved expedition, reclaim it first. The other bodies still use the original orbital abstraction.
 
 The sector starts paused. Choose a surveyed, stable foundation for the module, balancing proximity to amber ore outcrops, cyan ice and mean solar exposure. A local survey reveals a neighbourhood around its target. Extractors need ore, wells need ice, and other equipment needs a stable surveyed foundation. Build from the existing service network.
 
@@ -12,18 +14,21 @@ The sector starts paused. Choose a surveyed, stable foundation for the module, b
 | --- | --- |
 | Left mouse | Inspect ground, survey or place the active construction plan |
 | Right mouse / 0 | Return to inspection |
+| B / Build | Open the Industry / Life support equipment palette |
+| Shift + placement | Keep the active tool for repeated construction |
 | 1 / 2 | Survey / land module |
 | 3 / 4 / 5 | Solar / ore extractor / ice well |
-| 6 / 7 / 8 | Refinery / fabricator / pioneer refuge |
+| 6 / 7 / 8 / 9 | Refinery / fabricator / pioneer refuge / field testbed |
 | Middle-mouse drag | Pan |
 | Mouse wheel | Zoom |
 | Q / E | Rotate the camera |
 | Space | Pause / resume at 1 simulated hour per second |
-| Ⅱ / 1× / 10× / 50× | Pause or choose hours per real second |
-| Escape / Orbit | Return to the orbital console, paused |
+| Pause / 1× / 10× / 50× | Pause or choose hours per real second |
+| Escape | Dismiss placement, palette or selection; then return to orbit |
+| Orbit | Return to the orbital console, paused |
 | F11 | Fullscreen |
 
-The tool hint shows construction inputs, base duration and operating load. Select a machine to inspect its status, queue, construction progress and service efficiency. Suspend nonessential equipment when power or inputs are needed elsewhere. Power arbitration follows construction order; there is no editable priority queue yet.
+The placement inspector shows construction inputs, base duration and operating load. Select a machine to inspect its status, queue, construction progress and service efficiency. Suspend nonessential equipment when power or inputs are needed elsewhere. Power arbitration follows construction order; there is no editable priority queue yet.
 
 ## Model and boundaries
 

@@ -96,6 +96,7 @@ func run() -> void:
 	await click("ControlsShielding")
 	await click("GrowLight")
 	await click("FitFilter")
+	await capture("22-trial-shielding-controls.png")
 	await click("TrialDay")
 	check(game.structure.trial.filter, "Filter button builds a real upgrade over time")
 	await click("FitCanopy")

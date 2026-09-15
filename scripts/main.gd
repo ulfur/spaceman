@@ -13,7 +13,6 @@ const GOLD := Color("e5bd85")
 var session = Session.get_shared()
 var sim = session.expedition
 var selected := "eir_iii"
-var chart := false
 var status: Label
 var year_label: Label
 var heading: Label
@@ -92,50 +91,43 @@ func clear_children(node: Node) -> void:
 func refresh() -> void:
 	var state: Dictionary = sim.state
 	var ship: Dictionary = state.ship
-	year_label.text = "Year %d  ·  Paused" % state.year
+	year_label.text = "Year %d + %d h · Paused" % [state.year, session.fractional_hours]
 	resources.text = "Fuel %.1f    ·    Propellant %.1f    ·    Alloy %.1f    ·    Hull %.0f%%    ·    Modules %d    ·    Archives %d" % [ship.fuel, ship.propellant, ship.alloy, ship.integrity, ship.modules, ship.seeds]
 	clear_children(body_list)
 	for definition in sim.scenario.bodies:
 		if definition.system != state.system:
 			continue
 		var id: String = definition.id
-		var item := button(("•  " if selected == id and not chart else "") + definition.name, select_body.bind(id), "Select_" + id)
+		var item := button(("•  " if selected == id else "") + definition.name, select_body.bind(id), "Select_" + id)
 		UI.selected(item, selected == id)
 		body_list.add_child(item)
 	var body: Dictionary = sim.known_body(selected)
-	if chart:
-		heading.text = "The long way home"
-		subtitle.text = "EIR  /  VESPER     ·     Two stars. One continuous mind."
-		var known: Dictionary = sim.known_body("eir_iii")
-		telemetry.text = "CRUISE  0.07 c   /   TRANSIT  %d years\nEir III: last observation, year %d. %s" % [sim.travel_quote().years, sim.state.observations.eir_iii.year, "Surface telemetry requires a survey." if not known.surveyed else "%.1f K · %.0f%% surface water" % [known.temperature, known.water * 100.0]]
+	heading.text = body.get("name", "Unknown body")
+	subtitle.text = body.get("description", "Awaiting observation.") if body.get("surveyed", false) else "Orbital contact · Unsurveyed"
+	if body.get("surveyed", false):
+		if body.kind == "world" and body.water > 0.15:
+			subtitle.text = "An ocean world beneath gathering clouds. " + ("Pioneer life is finding its way." if body.seeded else "Liquid water. An atmosphere. The possibility of life.")
+		if body.kind == "world" and body.temperature > 303.0:
+			subtitle.text = "A world pushed beyond the seed archive's tolerances. The heat is hostile to pioneer life."
+		telemetry.text = "%.1f K   /   %.0f%% SURFACE WATER   /   %.1f%% BIOSPHERE\n%s  ·  %.1f accessible feedstock" % [body.temperature, body.water * 100.0, body.biomass * 100.0, "NO SURFACE INDUSTRY" if body.factory == "" else body.factory.to_upper() + " FACTORY", body.deposit]
+		if session.site_available(selected) and session.sites.has(selected) and session.sites[selected].state.landed:
+			telemetry.text = "%.1f K   /   SPATIAL INDUSTRY ACTIVE\n%d installations · protected local culture, not planetary terraforming" % [body.temperature, session.sites[selected].state.structures.size()]
 	else:
-		heading.text = body.get("name", "Unknown body")
-		subtitle.text = body.get("description", "Awaiting observation.") if body.get("surveyed", false) else "ORBITAL CONTACT  /  Detailed survey pending."
-		if body.get("surveyed", false):
-			if body.kind == "world" and body.water > 0.15:
-				subtitle.text = "An ocean world beneath gathering clouds. " + ("Pioneer life is finding its way." if body.seeded else "Liquid water. An atmosphere. The possibility of life.")
-			if body.kind == "world" and body.temperature > 303.0:
-				subtitle.text = "A world pushed beyond the seed archive's tolerances. The heat is hostile to pioneer life."
-			telemetry.text = "%.1f K   /   %.0f%% SURFACE WATER   /   %.1f%% BIOSPHERE\n%s  ·  %.1f accessible feedstock" % [body.temperature, body.water * 100.0, body.biomass * 100.0, "NO SURFACE INDUSTRY" if body.factory == "" else body.factory.to_upper() + " FACTORY", body.deposit]
-			if session.site_available(selected) and session.sites.has(selected) and session.sites[selected].state.landed:
-				telemetry.text = "%.1f K   /   SPATIAL INDUSTRY ACTIVE\n%d installations · protected local culture, not planetary terraforming" % [body.temperature, session.sites[selected].state.structures.size()]
-		else:
-			telemetry.text = "Unresolved composition.\nDeploy a survey probe before making plans."
+		telemetry.text = "Composition unresolved"
 	if body.get("generated", false) and body.kind == "world" and body.surveyed:
 		var known: Dictionary = session.prospects.evidence(body.system)
 		subtitle.text = "LOCAL PROBE  /  Climate and native life unresolved. Globe is a schematic reconstruction."
 		telemetry.text = "IRRADIANCE %.2f–%.2f EARTH  /  GRAVITY %.2f g\nPRESSURE %.2f bar  /  MAGNETIC FIELD %.2f Earth · geometry unresolved" % [known.flux_low, known.flux_high, known.gravity, known.pressure, known.field_earth]
-	view.show_body(body, chart, state.system)
+	view.show_body(body)
 	refresh_operations(body)
 
 func select_body(id: String) -> void:
 	selected = id
 	industry_open = false
-	chart = false
 	refresh()
 
 func action_button(text: String, action: String, disabled: bool = false, hint: String = "") -> void:
-	var node := button(text, act.bind(action), "Action_" + action)
+	var node := UI.button(text, act.bind(action), "Action_" + action, action in ["survey", "deploy", "collect", "seed"])
 	node.disabled = disabled
 	node.tooltip_text = hint
 	operations.add_child(node)
@@ -194,6 +186,10 @@ func refresh_operations(body: Dictionary) -> void:
 	elif has_surface:
 		operations.add_child(UI.label("The surface module remains committed. Its work continues while Spaceship is away.", 15, MUTED, true))
 
+	if body.kind == "world" and not body.get("generated", false) and body.factory != "warming" and not body.seeded and body.temperature >= 273 and body.temperature <= 303 and body.water >= 0.1:
+		operations.add_child(HSeparator.new())
+		action_button("Introduce pioneer life", "seed", sim.state.ship.seeds < 1, "Consumes one archive packet.")
+
 func act(action: String, value: float = 288.0) -> void:
 	var was_complete: bool = sim.state.first_rain
 	var outcome: Dictionary = session.command(action, "" if action == "travel" else selected, value)
@@ -201,7 +197,6 @@ func act(action: String, value: float = 288.0) -> void:
 	if outcome.ok:
 		if action == "travel":
 			selected = session.default_body()
-			chart = false
 		refresh()
 		autosave()
 		if sim.state.first_rain and not was_complete:

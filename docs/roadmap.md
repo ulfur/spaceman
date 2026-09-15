@@ -13,6 +13,8 @@ This is a sequence of playable proofs, not a promise of dates. Each stage must b
 | 5 · A world worth inhabiting | Larger navigable regions, stronger terrain/material/lighting art, environmental changes, sound and ecological variation. | The playable scene—not a concept painting—conveys place and change at an acceptable measured frame rate. |
 | 6 · Embodiment — distant future | Inhabit a manufactured robot or vehicle in the same persistent world; first-person work and exploration. | Direct control operates the same machinery and inventory as strategic orders. No separate decorative first-person game. |
 
+The [interface pass](interface.md) follows Testbeds: it simplifies all four existing workspaces and validates the same expedition through the revised navigation and controls. Playtesting should now focus on discoverability, pacing and whether a failure suggests a clear next action.
+
 ## Current scope lock: Testbeds
 
 The [Testbeds implementation](testbeds.md) connects the environmental evidence from Prospects to a maintained physical experiment. Use the existing surface service graph, power arbitration and inventory. Heat and pressure respond over time; water phase changes, gas processing and biomass production preserve explicit material budgets. Shielding channels remain distinct. Verify that an unsupported culture can fail without deleting its mass or its history.

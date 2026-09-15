@@ -20,3 +20,7 @@ Controls should answer: what am I pointing at, what will be built, why is placem
 | Surface | Real 3D terrain and industry with minimal overlays. | Survey, preview, place, inspect production and revise the network. |
 
 No Man's Sky is a long-term reference for the appeal of exploring a place, not a claim that this prototype matches its fidelity or scope. The next visual milestone is credible, readable machinery on tangible ground. More ambitious terrain streaming, biomes, atmospheres and embodiment must be earned by working builds and measured performance.
+
+## Implemented interface pass
+
+The [interface pass](interface.md) applies this direction across the four current screens: common navigation and time controls, one contextual inspector, a collapsed surface build palette, grouped trial controls and separate history views. The planet and terrain carry the composition. Secondary instructions, long dossiers and utility commands are disclosed when needed. Normal and compact native-engine screenshots are reviewed from CI.

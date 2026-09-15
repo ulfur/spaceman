@@ -168,6 +168,7 @@ static func menu_key(owner: Control, event: InputEvent) -> bool:
 
 static func text_dialog(owner: Control, title: String, contents: String) -> void:
 	var dialog := AcceptDialog.new()
+	dialog.name = "ReferenceDialog"
 	dialog.title = title
 	var text := RichTextLabel.new()
 	text.custom_minimum_size = Vector2(530, 320)

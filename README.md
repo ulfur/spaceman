@@ -12,6 +12,8 @@ He is a braincast of the original commander: a digital mind adapted to life as a
 
 **Testbeds** adds a physical environmental experiment to those regions. Build a chamber, control its heat and gas inventory, supply water and shielding, and test an archive culture against the resulting conditions. The engineering console plots real measurements; the same experiment keeps evolving when you leave. See [Testbeds controls, equations and limits](docs/testbeds.md).
 
+The **interface pass** reorganises these features into a star chart, orbital view, surface workspace and field-trial console with shared navigation and contextual controls. See [screen layout and controls](docs/interface.md).
+
 The broader goal spans a galactic map, star systems, planetary engineering, RTS-style surface industry, and eventually first-person robot embodiment. See [Game direction](docs/vision.md) for that vision and the distinction between current features and future work.
 
 The updated concept is an open-ended expedition simulation: observe distant systems, choose where to travel, develop an industrial plan, and discover the consequences. [Science and simulation](docs/science-and-simulation.md) records scientific constraints and speculative engineering; [Visual direction](docs/visual-direction.md) translates the concept-art direction into runtime goals. The [development roadmap](docs/roadmap.md) sets the order and acceptance tests for playable milestones.
@@ -28,27 +30,27 @@ The game starts paused. In orbit, use **+1 / +10 / +50 yr** to advance time. **F
 
 ### Try the new surface prototype
 
-**Survey Eir III → Surface operations / 3D**, before deploying the legacy orbital-policy factory. If your existing save already has one there, reclaim it first. Land the module near ore and ice, then use the bottom toolbelt to build. **Space** pauses; **1× / 10× / 50×** set simulated hours per second. **Middle-drag** pans, **wheel** zooms and **Q/E** rotate. **Escape** returns to orbit, paused. See [surface controls and model boundaries](docs/surface-prototype.md).
+**Survey Eir III → Choose a landing site**, before deploying the legacy orbital-policy factory. If your existing save already has one there, reclaim it first. Land the module near ore and ice, then open **Build [B]** and choose **Industry** or **Life support**. **Space** pauses; **1× / 10× / 50×** set simulated hours per second. **Middle-drag** pans, **wheel** zooms and **Q/E** rotate. **Escape** dismisses placement or selection first, then returns to orbit, paused. Hold **Shift** for repeated placement. See [surface controls and model boundaries](docs/surface-prototype.md).
 
 A useful first production chain is solar → ore extractor + ice well → refinery → fabricator → refuge. Add enough solar capacity and inspect machine status when something stalls. Deposits and life-support supplies are finite: a refuge is not automatically sustainable forever. Module recovery and surface freight are not yet implemented in this slice.
 
 ### Scout another system
 
-Open **Prospects / observatory** from orbit. Click a star, run an **Orbit fit**, **Spectrum**, and **Activity watch** as useful, then review **Commit transit**. On arrival, a **Local probe** unlocks that planet's **Surface operations / 3D**. **Local orbit** exposes its industrial companion and the original ship-supply mechanics. Observation consumes time and fuel; a probe also consumes alloy. New expeditions can use a chosen neighbourhood seed; that seed and the acquired evidence persist in the expedition save.
+Open **Star chart** from the navigation bar. Click a star, run an **Orbit fit**, **Spectrum**, and **Activity watch** as useful, then choose **Review transit**. On arrival, a **Local probe** unlocks that planet's **Choose a landing site** action. The named **orbit** link exposes its industrial companion and the original ship-supply mechanics. Observation consumes time and fuel; a probe also consumes alloy. **Menu → New expedition** can use a chosen neighbourhood seed; that seed and the acquired evidence persist in the expedition save.
 
 ### Run a field trial
 
-On a probed generated world, land a module and build **Testbed [9]** on its service network. Select the finished structure and open **Field trial**. Configure thermal control, atmospheric processing, water feed, lighting and protection; let the conditions settle before committing one archive packet. Compare the temperature, pressure and culture graphs as the trial responds. A UV filter and a regolith canopy have different effects, and an opaque shelter needs another light source.
+On a probed generated world, land a module, then choose **Build → Life support → Field testbed [9]** and place it on the service network. Select the finished structure and choose **Open field trial**. Use the **Climate**, **Shielding** and **Culture** tabs; let the conditions settle before committing one archive packet. Switch from **Chamber** to **Temperature**, **Pressure** or **Culture** to inspect its history. A UV filter and a regolith canopy have different effects, and an opaque shelter needs another light source.
 
 Testbeds draw actual surface power and service parts. Losing support can kill the culture. This first engineering pilot covers a 16 m² enclosure; regional/global terraforming remains on the roadmap. Saves use version four and migrate all three previous formats.
 
 ### Your first expedition
 
-1. **Survey Eir III**, then **land a factory module**. Keep its equilibrium target at **288 K**.
-2. **Depart for Vesper**. Confirm the costs and factories being left behind. The journey takes **68 years**.
-3. **Survey Vesper B** and land the second factory. Advance **10 years**, then **collect manufactured supplies**. More time means more reserves, until the deposit is exhausted.
-4. **Depart for Eir**. Eir III has kept changing during both journeys. This completes **First Rain** if the world has developed enough liquid water.
-5. **Release pioneer life**, then advance decades to watch it grow. Continue exploring, recover factories, build replacements, repair Spaceship, or experiment with a different climate target.
+1. **Survey Eir III**, expand **Orbital industry**, then **Deploy climate factory**. Keep its equilibrium target at **288 K**.
+2. Open **Star chart**, select **Vesper**, then **Review transit → Begin transit**. Confirm the costs and factories being left behind. The journey takes **68 years**.
+3. Enter **Vesper orbit**, **Survey Vesper B** and **Deploy factory module**. Advance **10 years**, then **Collect supplies**. More time means more reserves, until the deposit is exhausted.
+4. Return through **Star chart → Eir → Review transit**. Eir III has kept changing during both journeys. This completes **First Rain** if the world has developed enough liquid water.
+5. Enter **Eir orbit** and **Introduce pioneer life**, then advance decades to watch it grow. Continue exploring, recover factories, build replacements, repair Spaceship, or experiment with a different climate target.
 
 You begin with enough transit reserves for one round trip even without mining. Further journeys require industry. Recovering a warming factory stops its work; the atmosphere subsequently loses its greenhouse effect slowly. Extreme targets can destroy a developing biosphere.
 
@@ -88,6 +90,7 @@ The last four commands need a display and write screenshots to ignored `build/`.
 | --- | --- |
 | `scripts/simulation.gd` | State, commands, annual evolution, observations, saves |
 | `data/expedition.json` | Authored systems, starting resources, route parameters |
+| `scripts/interface.gd` | Shared native UI styles, navigation, menus and layout |
 | `scripts/main.gd` | Orbital command interface |
 | `scripts/session.gd` | Shared time, module allocation, combined saves and migration |
 | `scripts/surface_simulation.gd` | Surface resources, construction, power, service graph and refuge |
@@ -97,7 +100,7 @@ The last four commands need a display and write screenshots to ignored `build/`.
 | `scripts/observatory.gd`, `scripts/prospect_map.gd` | Distant scouting, route review and destination selection |
 | `scripts/testbed_simulation.gd`, `data/testbeds.json` | Chamber gas, heat, water phases, exposure and archive-culture model |
 | `scripts/testbeds.gd`, `scripts/trial_diagram.gd` | Engineering orders, live schematic and measured history |
-| `scripts/space_view.gd` | Star chart and procedural viewport |
+| `scripts/space_view.gd` | Procedural planetary viewport |
 | `shaders/planet.gdshader` | Rotating globe; ice, water, clouds, and life reflect state |
 | `tests/` | Simulation invariants and rendered expedition walkthrough |
 | `docs/design.md` | Concept, model assumptions, boundaries, and next milestones |

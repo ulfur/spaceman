@@ -4,9 +4,11 @@
 
 Prospects adds six generated systems to the two-system First Rain fixture. Each has a candidate terrestrial planet and an industrial companion. The same observation, route, inventory and surface-production rules apply to every prospect. The generator produces illustrative synthetic systems, not a catalogue of real stars or a statistically calibrated galaxy.
 
+The [interface pass](interface.md) puts observing programmes in **Overview**, full dated readings in **Evidence**, and the route review below the selected system.
+
 ## Play
 
-From orbit choose **Prospects / observatory**. Select a star directly on the chart. Its catalogue supplies location, broad spectral class, luminosity and an age range; planetary conditions remain unknown.
+From orbit choose **Star chart**. Select a star directly on the chart. Its catalogue supplies location, broad spectral class, luminosity and an age range; planetary conditions remain unknown.
 
 | Programme | Cost | Evidence gained |
 | --- | --- | --- |
@@ -17,9 +19,9 @@ From orbit choose **Prospects / observatory**. Select a star directly on the cha
 
 Programme durations advance the same expedition clock and all existing industrial sites. Completed programmes cannot be rerun to fish for a better result. The truth is generated from the expedition seed and never changes when an observation is purchased. The ranges are designed uncertainty bounds, not formal confidence intervals or a spectrum-retrieval calculation.
 
-Compare transit time, fuel/propellant costs and same-route return reserves before departing. Arrival enables a local probe; probing enables **Surface operations / 3D** on the new world. The orbital view also exposes the industrial companion: its existing abstract mining factory can manufacture ship supplies, be reclaimed, and produce replacement modules. Spatial modules remain committed as in First Foothold.
+Compare transit time, fuel/propellant costs and same-route return reserves before departing. Arrival enables a local probe; probing enables **Choose a landing site** on the new world. The orbital view also exposes the industrial companion: its existing abstract mining factory can manufacture ship supplies, be reclaimed, and produce replacement modules. Spatial modules remain committed as in First Foothold.
 
-The chart includes Eir and Vesper, so the original expedition and a return home remain available. New routes are not fixed mission steps. The **New expedition** control takes a seed and asks the player to confirm replacing the expedition and autosave. The same seed reconstructs the same opportunities; changing it changes stars, routes, terrain and deposits together.
+The chart includes Eir and Vesper, so the original expedition and a return home remain available. New routes are not fixed mission steps. The **Menu → New expedition** control takes a seed and asks the player to confirm replacing the expedition and autosave. The same seed reconstructs the same opportunities; changing it changes stars, routes, terrain and deposits together.
 
 ## What the new evidence changes in play
 

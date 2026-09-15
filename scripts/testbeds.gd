@@ -135,8 +135,8 @@ func build_interface() -> void:
 	shielding.add_child(UI.label("Roof shade", 14, MUTED))
 	var shades := UI.row(shielding, 4)
 	for value in [0, 50, 90]: shades.add_child(button("%d%%" % value, order.bind("shade", value / 100.0), "Shade_%d" % value))
-	shielding.add_child(button("UV filter\n4 metal · 1 part · 8 h", order.bind("filter", null), "FitFilter"))
-	shielding.add_child(button("Regolith canopy\n4 ore · 8 metal · 2 parts · 16 h", order.bind("canopy", null), "FitCanopy"))
+	shielding.add_child(button("UV filter · 8 h\n4 t metal · 1 t parts", order.bind("filter", null), "FitFilter"))
+	shielding.add_child(button("Regolith canopy · 16 h\n4 t ore · 8 t metal · 2 t parts", order.bind("canopy", null), "FitCanopy"))
 	shielding.add_child(UI.label("The canopy blocks most daylight. A sheltered culture may need powered lighting.", 15, MUTED, true))
 	var culture: VBoxContainer = pages[2]
 	culture.add_child(button("Inoculate · 1 archive", order.bind("inoculate", null), "Inoculate"))
@@ -237,12 +237,12 @@ func refresh() -> void:
 		node.disabled = not ready or t[upgrade] or t.upgrade != ""
 		for resource in Model.CONFIG.upgrades[upgrade].cost:
 			if goods[resource] < Model.CONFIG.upgrades[upgrade].cost[resource]: node.disabled = true
-	buttons.FitFilter.text = "✓ UV filter installed" if t.filter else "UV filter\n4 metal · 1 part · 8 h"
-	buttons.FitCanopy.text = "✓ Regolith canopy installed" if t.canopy else "Regolith canopy\n4 ore · 8 metal · 2 parts · 16 h"
+	buttons.FitFilter.text = "✓ UV filter installed" if t.filter else "UV filter · 8 h\n4 t metal · 1 t parts"
+	buttons.FitCanopy.text = "✓ Regolith canopy installed" if t.canopy else "Regolith canopy · 16 h\n4 t ore · 8 t metal · 2 t parts"
 	buttons.Inoculate.disabled = not ready or t.biomass_kg > 0.000000001 or session.expedition.state.ship.seeds < 1
 	var record: String = "Established culture" if t.established else "Archive trial"
 	if t.established and t.biomass_kg < 0.000001: record = "Culture lost · Record retained"
-	progress.text = "%s\n%.1f g live · %.1f g detritus\n%.0f / 168 stable hours\n\nEnergy %.1f kWh\nCO₂ captured %.1f kg" % [record, t.biomass_kg * 1000, t.detritus_kg * 1000, t.stable_hours, t.energy_kwh, t.captured_co2_kg]
+	progress.text = "%s\n%.1f g detritus\n%.0f / 168 stable hours\n\nEnergy %.1f kWh\nCO₂ captured %.1f kg" % [record, t.detritus_kg * 1000, t.stable_hours, t.energy_kwh, t.captured_co2_kg]
 	if t.upgrade != "": progress.text += "\n%s installation %d%%" % [Model.CONFIG.upgrades[t.upgrade].label, t.upgrade_progress * 100]
 	status.tooltip_text = status.text
 	diagram.queue_redraw()
