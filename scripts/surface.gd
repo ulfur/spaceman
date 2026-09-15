@@ -129,7 +129,7 @@ func build_interface() -> void:
 		node.tooltip_text = recipe.label + ": " + recipe_description(kind)
 		categories[1 if kind in ["refuge", "testbed"] else 0].add_child(node)
 		tool_buttons[kind] = node
-	build_hint = UI.label("Choose equipment, then place it on the ground.\n\nOre → metal → components\nIce → water", 15, MUTED, true)
+	build_hint = UI.label("Choose equipment, then place it on the ground.\n\nOre → metal → parts\nIce → water", 15, MUTED, true)
 	build_page.add_child(build_hint)
 	set_category(0)
 	var bottom := UI.footer(self)
@@ -275,7 +275,7 @@ func update_detail() -> void:
 	detail.text = structure.status + "\n"
 	if structure.progress < 1: detail.text += "Construction %d%%\n" % int(structure.progress * 100)
 	detail.text += "Service efficiency %d%%" % int(structure.efficiency * 100)
-	if structure.queue.size() > 0: detail.text += "\nProduces " + ", ".join(structure.queue)
+	if structure.queue.size() > 0: detail.text += "\nProduces " + ", ".join(structure.queue).replace("components", "parts")
 	if cell.resource != "": detail.text += "\nDeposit %.1f t remaining" % cell.remaining
 	if structure.kind == "solar": detail.text += "\nSunlight %.0f%%" % (cell.light * 100)
 	if structure.kind == "seed": detail.text += "\n\nBuild power, then extract ore and ice. Refine metal and fabricate parts to maintain the installation."

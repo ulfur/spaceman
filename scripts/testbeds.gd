@@ -239,6 +239,9 @@ func refresh() -> void:
 			if goods[resource] < Model.CONFIG.upgrades[upgrade].cost[resource]: node.disabled = true
 	buttons.FitFilter.text = "✓ UV filter installed" if t.filter else "UV filter · 8 h\n4 t metal · 1 t parts"
 	buttons.FitCanopy.text = "✓ Regolith canopy installed" if t.canopy else "Regolith canopy · 16 h\n4 t ore · 8 t metal · 2 t parts"
+	if t.upgrade != "":
+		var pending: Button = buttons.FitFilter if t.upgrade == "filter" else buttons.FitCanopy
+		pending.text = "Installing " + Model.CONFIG.upgrades[t.upgrade].label + "\n%d%% · needs operating time" % int(t.upgrade_progress * 100)
 	buttons.Inoculate.disabled = not ready or t.biomass_kg > 0.000000001 or session.expedition.state.ship.seeds < 1
 	var record: String = "Established culture" if t.established else "Archive trial"
 	if t.established and t.biomass_kg < 0.000001: record = "Culture lost · Record retained"
