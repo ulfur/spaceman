@@ -47,7 +47,7 @@ func _ready() -> void:
 		for body in session.expedition.scenario.bodies:
 			if body.system == map.system: selected = body.id; break
 	select_body(selected)
-	Nav.arrive(self, map)
+	Nav.arrive(self, map, map.centre())
 
 func select_body(id: String) -> void:
 	selected = id
@@ -75,6 +75,7 @@ func open_body(id: String) -> void:
 	Nav.go(self, "res://scenes/main.tscn", map.body_position(id), true)
 
 func open_chart() -> void:
+	session.chart_center = session.expedition.system_position(map.system)
 	Nav.go(self, "res://scenes/prospects.tscn", map.centre(), false)
 
 func _unhandled_key_input(event: InputEvent) -> void:

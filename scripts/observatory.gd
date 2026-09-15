@@ -34,11 +34,14 @@ var seed_input: SpinBox
 func _ready() -> void:
 	if not session.initialized:
 		session.load_disk()
-	if session.prospects.worlds.has(session.expedition.state.system):
+	if session.expedition.has_system(session.viewed_system):
+		selected = session.viewed_system
+	elif session.prospects.worlds.has(session.expedition.state.system):
 		selected = session.expedition.state.system
 	build_interface()
 	refresh()
-	Nav.arrive(self, map)
+	var focus: Vector2 = map.star_position(selected)
+	Nav.arrive(self, map, focus if map.chart_region().has_point(focus) else map.chart_region().get_center())
 
 func label(text: String, font_size: int = 15, color: Color = INK) -> Label:
 	var node := Label.new()
@@ -151,6 +154,7 @@ func build_interface() -> void:
 
 func select_system(id: String) -> void:
 	selected = id
+	session.viewed_system = id
 	refresh()
 
 func refresh() -> void:

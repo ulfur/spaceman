@@ -72,6 +72,10 @@ func _draw() -> void:
 		draw_string(font, origin + Vector2(-6, -scale_value * radius + 15), "%d ly" % radius, HORIZONTAL_ALIGNMENT_LEFT, -1, 10, Color("607581"))
 	draw_line(origin + Vector2(-scale_value * 5, 0), origin + Vector2(scale_value * 5, 0), Color("182b35"), 1)
 	draw_line(origin + Vector2(0, -scale_value * 5), origin + Vector2(0, scale_value * 5), Color("182b35"), 1)
+	var ruler := chart_region().position + Vector2(14, chart_region().size.y - 24)
+	draw_line(ruler, ruler + Vector2(scale_value, 0), Color("8fa6af"), 1.5, true)
+	for x in [0.0, scale_value]: draw_line(ruler + Vector2(x, -4), ruler + Vector2(x, 4), Color("8fa6af"), 1.0, true)
+	draw_string(font, ruler + Vector2(0, 20), "1 ly · Field centre %.0f, %.0f ly" % [session.chart_center.x, session.chart_center.y], HORIZONTAL_ALIGNMENT_LEFT, -1, 11, Color("8fa6af"))
 	var local: String = session.expedition.state.system
 	var active := star_position(local)
 	if selected != local:

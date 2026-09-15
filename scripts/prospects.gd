@@ -83,7 +83,7 @@ func catalogue_cell(cell: Vector2i) -> bool:
 		var world: Dictionary = neighbour.worlds["prospect_%d" % index].duplicate(true)
 		var id := "field_%d_%d_%d" % [cell.x, cell.y, index]
 		world.id = id
-		world.name = "%s %s.%d" % [CONFIG.names[index], key, index + 1]
+		world.name = "%s-%04X" % [CONFIG.names[index], rng.randi() & 65535]
 		world.x_ly += cell.x * Atlas.CELL_LY
 		world.y_ly += cell.y * Atlas.CELL_LY
 		worlds[id] = world

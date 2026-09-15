@@ -68,7 +68,7 @@ func _draw() -> void:
 		var point := body_position(definition.id)
 		points[definition.id] = point
 		var tint := Color("95bac8") if definition.kind == "world" else Color("b4a38e")
-		var r := 8.0 if definition.kind == "world" else 4.0
+		var r := 8.0 if definition.kind == "world" else 5.0
 		draw_circle(point, r * zoom + 3, Color(tint, 0.12))
 		if icons.has(definition.id):
 			var icon: ColorRect = icons[definition.id]
@@ -77,7 +77,10 @@ func _draw() -> void:
 			icon.position = point - icon.size * 0.5
 		if definition.id == selected or definition.id == hovered:
 			draw_arc(point, r * zoom + 11, 0, TAU, 64, Color("c1d9cd"), 1.5, true)
-		var offset := Vector2(13, -15) if definition.kind == "world" else Vector2(8, 21)
+		var offset := Vector2(16, -17)
+		if definition.kind == "moon":
+			var direction := (point - parent).normalized()
+			offset = direction * 23.0 + Vector2(-font.get_string_size(definition.name, HORIZONTAL_ALIGNMENT_LEFT, -1, 12).x if direction.x < 0 else 3.0, 5.0)
 		draw_string(font, point + offset, definition.name, HORIZONTAL_ALIGNMENT_LEFT, -1, 15 if definition.kind == "world" else 12, Color("d8e0d9"))
 	if system == session.expedition.state.system:
 		draw_string(font, region().position + Vector2(0, 10), "SPACESHIP IN SYSTEM", HORIZONTAL_ALIGNMENT_LEFT, -1, 11, Color("a1d6ca"))

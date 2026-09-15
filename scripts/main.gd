@@ -35,7 +35,7 @@ func _ready() -> void:
 		status.text = loaded.message
 	selected = session.orbit_body if not sim.local_body(session.orbit_body).is_empty() else session.default_body()
 	refresh()
-	Nav.arrive(self, view)
+	Nav.arrive(self, view, view.globe.position + view.globe.size * 0.5)
 
 
 func build_theme() -> void:
@@ -67,7 +67,13 @@ func build_interface() -> void:
 	var scene := UI.column(UI.mount(self, Control.PRESET_FULL_RECT, Vector4(28, 140, -410, -112)), 14)
 	body_list = HBoxContainer.new()
 	body_list.name = "LocalBodies"
-	scene.add_child(body_list)
+	var body_scroll := ScrollContainer.new()
+	body_scroll.name = "OrbitBodiesScroll"
+	body_scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_AUTO
+	body_scroll.vertical_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	body_scroll.custom_minimum_size.y = 56
+	scene.add_child(body_scroll)
+	body_scroll.add_child(body_list)
 	heading = UI.label("", 36)
 	scene.add_child(heading)
 	subtitle = UI.label("", 16, MUTED, true)
@@ -263,6 +269,8 @@ func _unhandled_key_input(event: InputEvent) -> void:
 		get_viewport().set_input_as_handled()
 
 func open_prospects() -> void:
+	session.viewed_system = sim.state.system
+	session.chart_center = sim.system_position(sim.state.system)
 	Nav.go(self, "res://scenes/prospects.tscn", view.position + view.size * 0.5, false)
 
 

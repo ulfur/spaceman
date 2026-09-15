@@ -51,7 +51,7 @@ func _ready() -> void:
 	footer.add_child(UI.label("Regional survey candidates · 80 m working sites · Globe reconstruction and resource estimates are schematic", 13, UI.MUTED))
 	status = UI.status(footer)
 	select_region(selected)
-	Nav.arrive(self, globe)
+	Nav.arrive(self, globe, globe.globe.position + globe.globe.size * 0.5)
 
 func select_region(region: Vector2i) -> void:
 	selected = region

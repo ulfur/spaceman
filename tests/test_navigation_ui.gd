@@ -24,8 +24,7 @@ func capture(filename: String) -> void:
 	check(root.get_texture().get_image().save_png("res://build/" + filename) == OK, "Capture " + filename)
 func transition() -> void:
 	check(Nav.busy, "Navigation begins an animated camera transition")
-	for i in range(6):
-		await create_timer(0.1).timeout
+	for i in range(16):
 		await capture("zoom-%02d.png" % movie_frame)
 		movie_frame += 1
 	await arrived()

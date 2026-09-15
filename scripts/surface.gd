@@ -403,6 +403,8 @@ func dismiss_inspector() -> void:
 	set_tool("inspect")
 
 func open_chart() -> void:
+	session.viewed_system = session.expedition.state.system
+	session.chart_center = session.expedition.system_position(session.expedition.state.system)
 	set_speed(0)
 	if autosave(): Nav.go(self, "res://scenes/prospects.tscn", size * Vector2(0.38, 0.52), false)
 
