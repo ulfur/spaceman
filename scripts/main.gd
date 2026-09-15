@@ -129,7 +129,7 @@ func refresh() -> void:
 	else:
 		telemetry.text = "Composition unresolved"
 	if body.get("generated", false) and body.kind == "world" and body.surveyed:
-		var known: Dictionary = session.prospects.evidence(body.system)
+		var known: Dictionary = session.prospects.body_evidence(body.id)
 		subtitle.text = "LOCAL PROBE  /  Climate and native life unresolved. Globe is a schematic reconstruction."
 		telemetry.text = "IRRADIANCE %.2f–%.2f EARTH  /  GRAVITY %.2f g\nPRESSURE %.2f bar  /  MAGNETIC FIELD %.2f Earth · geometry unresolved" % [known.flux_low, known.flux_high, known.gravity, known.pressure, known.field_earth]
 		body = body.duplicate(true)

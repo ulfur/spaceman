@@ -22,6 +22,7 @@ func _ready() -> void:
 	map.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	map.session = session
 	map.system = session.viewed_system
+	map.prepare_icons()
 	map.selected_body.connect(select_body)
 	map.entered_body.connect(open_body)
 	var nav := UI.header(self)

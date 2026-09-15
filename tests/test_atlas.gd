@@ -24,7 +24,6 @@ func _initialize() -> void:
 	check(not second.state.landed and second.state.structures.is_empty(), "Factories are not copied across regions")
 	check(session.surface_command("land", 10, 10).ok and session.expedition.state.ship.modules == 0, "Second landing accounts for the second module")
 	check(not session.command("deploy", "eir_iii").ok, "Regional installations exclude overlapping legacy allocation")
-	var solar_site := Atlas.DEFAULT_REGION
 	var polar: Dictionary = session.region_context("eir_iii", Vector2i(51, 0))
 	check(polar.solar_factor < session.region_context("eir_iii", second_region).solar_factor, "Latitude changes solar screening potential")
 	session.advance_hours(13)
@@ -65,6 +64,21 @@ func _initialize() -> void:
 	check(Atlas.orbit(session.expedition.state.bodies.nacre).parent == "eir_iii", "Authored moon has a planetary parent")
 	check(Atlas.orbit(session.expedition.state.bodies[target + "_c"]).parent == target + "_b", "Generated moon has a planetary parent")
 	check(Atlas.orbit(session.expedition.state.bodies[target + "_d"]).au > Atlas.orbit(session.expedition.state.bodies[target + "_b"]).au, "Outer planet is a distinct orbit")
+	var travel = Session.new()
+	travel.catalogue_field(Vector2i(1, 0))
+	travel.expedition.state.ship.fuel = 500.0
+	travel.expedition.state.ship.propellant = 1500.0
+	var arrival := "field_1_0_0"
+	var travel_year: int = travel.expedition.state.year
+	var travel_duration: int = travel.expedition.travel_quote(arrival).years
+	check(travel.command("travel", arrival).ok and travel.expedition.state.year == travel_year + travel_duration, "Generated destination is reachable through the actual travel simulation")
+	check(travel.observe(arrival, "probe").ok and travel.site_available(arrival + "_d"), "Local probe opens the generated outer planet")
+	check(travel.prospects.body_evidence(arrival + "_d").flux_high < travel.prospects.body_evidence(arrival + "_b").flux_low, "Outer-world evidence uses its own irradiance")
+	check(travel.choose_region(arrival + "_d", Vector2i(3, 0)), "Polar site on an outer world is selectable")
+	travel.surface_for(travel.surface_body)
+	check(restored.restore_json(travel.save_json()).ok, "Dim outer-world regions remain loadable")
+	var clipped: Array = preload("res://scripts/prospect_map.gd").clipped_route(Vector2(-1000000, 100), Vector2(400, 100), Rect2(0, 0, 600, 400))
+	check(clipped.size() == 2 and clipped[0].distance_to(clipped[1]) < 601, "Galactic routes submit only bounded visible geometry")
 	# A genuine v4 schema, before the additional orbital bodies existed.
 	var legacy = Session.new()
 	var old_orbit = Session.Simulation.new(legacy.prospects.definitions(false))

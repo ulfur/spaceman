@@ -440,7 +440,7 @@ func _integer(value: Variant, low: int, high: int = 1000000000) -> bool:
 	return _number(value, low, high) and value == floor(value)
 
 func _valid_save(candidate: Dictionary) -> bool:
-	if candidate.has("solar_factor") and not _number(candidate.solar_factor, 0.01, 1.8):
+	if candidate.has("solar_factor") and not _number(candidate.solar_factor, 0.0, 1.8):
 		return false
 	for key in ["version", "seed", "total_hours", "next_id", "landed", "resources", "cells", "structures", "events", "milestone"]:
 		if not candidate.has(key):

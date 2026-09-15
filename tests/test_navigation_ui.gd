@@ -84,18 +84,24 @@ func run() -> void:
 	wheel.position = Vector2(root.size) * Vector2(0.4, 0.5)
 	wheel.button_index = MOUSE_BUTTON_WHEEL_UP; wheel.pressed = true
 	root.push_input(wheel, true)
+	wheel = wheel.duplicate()
+	wheel.pressed = false
+	root.push_input(wheel, true)
 	check(game.world.distance < distance_before + 10.0, "Wheel zoom reaches terrain input")
 	await click("CameraHome")
 	check(game.world.focus == Vector3(4, 1, 2) and game.world.distance == 64, "Home recovers a useful camera")
+	var before_keys: Vector3 = game.world.focus
 	var key := InputEventKey.new()
 	key.physical_keycode = KEY_D; key.pressed = true
 	Input.parse_input_event(key)
 	await create_timer(0.15).timeout
 	key = InputEventKey.new(); key.physical_keycode = KEY_D; key.pressed = false
 	Input.parse_input_event(key)
-	check(game.world.focus != Vector3(4, 1, 2) and game.speed == 0, "WASD navigation works independently of simulation pause")
+	check(game.world.focus != before_keys and game.speed == 0, "WASD navigation works independently of simulation pause")
 	await capture("26-regional-industry.png")
 	await click("SurfacePlanet"); await arrived()
+	if game.name != "Regions":
+		printerr("FAIL: Planet navigation did not leave Surface"); quit(1); return
 	check(game.globe.established.size() == 1, "Planet map marks the established site")
 	region = Vector2i(41, 21)
 	projected = game.globe.project(region)

@@ -9,6 +9,7 @@ var points: Dictionary = {}
 var zoom := 1.0
 var pan := Vector2.ZERO
 var hovered := ""
+var icons: Dictionary = {}
 
 func region() -> Rect2:
 	return Rect2(32, 202, maxf(320, size.x - 460), maxf(340, size.y - 334))
@@ -18,7 +19,13 @@ func centre() -> Vector2:
 
 func orbit_radius(au: float) -> float:
 	# Log compression keeps moons and outer planets legible. Never labelled as a ruler.
-	return (55.0 + log(1.0 + au) * 88.0) * zoom
+	var maximum_au := 1.0
+	var evidence: Dictionary = session.prospects.evidence(system)
+	for body in session.expedition.scenario.bodies:
+		if body.system == system and body.kind == "world": maximum_au = maxf(maximum_au, Atlas.orbit(body, evidence).au)
+	var extent := minf(region().size.x * 0.42, region().size.y * 0.44 / 0.62)
+	var fit := extent / (55.0 + log(1.0 + maximum_au) * 88.0)
+	return (55.0 + log(1.0 + au) * 88.0) * fit * zoom
 
 func body_position(id: String) -> Vector2:
 	var body: Dictionary = session.expedition.state.bodies[id]
@@ -43,6 +50,7 @@ func _draw() -> void:
 	draw_circle(origin, 13.0 * zoom, color)
 	draw_string(font, origin + Vector2(-25, 38) * zoom, session.expedition.system_name(system), HORIZONTAL_ALIGNMENT_LEFT, -1, 14, color)
 	points.clear()
+	for icon in icons.values(): icon.hide()
 	if not resolved:
 		draw_arc(origin, 125, 0, TAU, 96, Color("30444d"), 1.0, true)
 		draw_string(font, origin + Vector2(-150, 160), "Acquire an orbit fit to resolve this system", HORIZONTAL_ALIGNMENT_LEFT, -1, 16, Color("93a8b0"))
@@ -62,8 +70,11 @@ func _draw() -> void:
 		var tint := Color("95bac8") if definition.kind == "world" else Color("b4a38e")
 		var r := 8.0 if definition.kind == "world" else 4.0
 		draw_circle(point, r * zoom + 3, Color(tint, 0.12))
-		draw_circle(point, r * zoom, tint)
-		draw_circle(point + Vector2(2, 1) * zoom, r * zoom * 0.7, tint.darkened(0.45))
+		if icons.has(definition.id):
+			var icon: ColorRect = icons[definition.id]
+			icon.visible = true
+			icon.size = Vector2.ONE * r * 3.7 * zoom
+			icon.position = point - icon.size * 0.5
 		if definition.id == selected or definition.id == hovered:
 			draw_arc(point, r * zoom + 11, 0, TAU, 64, Color("c1d9cd"), 1.5, true)
 		var offset := Vector2(13, -15) if definition.kind == "world" else Vector2(8, 21)
@@ -84,6 +95,8 @@ func _gui_input(event: InputEvent) -> void:
 		queue_redraw()
 	if event is InputEventMouseButton and event.pressed:
 		if event.button_index in [MOUSE_BUTTON_WHEEL_UP, MOUSE_BUTTON_WHEEL_DOWN]:
+			if event.button_index == MOUSE_BUTTON_WHEEL_UP and zoom >= 1.65 and hovered != "":
+				entered_body.emit(hovered); accept_event(); return
 			zoom = clampf(zoom * (1.12 if event.button_index == MOUSE_BUTTON_WHEEL_UP else 0.89), 0.6, 2.0); queue_redraw(); accept_event()
 		elif event.button_index == MOUSE_BUTTON_LEFT:
 			var nearest := ""
@@ -94,3 +107,20 @@ func _gui_input(event: InputEvent) -> void:
 				selected_body.emit(nearest)
 				if event.double_click: entered_body.emit(nearest)
 				accept_event()
+
+func prepare_icons() -> void:
+	for body in session.expedition.scenario.bodies:
+		if body.system != system: continue
+		var icon := ColorRect.new()
+		icon.mouse_filter = MOUSE_FILTER_IGNORE
+		var material := ShaderMaterial.new()
+		material.shader = preload("res://shaders/planet.gdshader")
+		material.set_shader_parameter("world_seed", body.seed)
+		material.set_shader_parameter("rocky", body.kind == "moon")
+		var known: Dictionary = session.expedition.known_body(body.id)
+		material.set_shader_parameter("warmth", clampf((known.get("temperature", 240.0) - 250.0) / 35.0, 0.0, 1.0))
+		material.set_shader_parameter("water", known.get("water", 0.0))
+		material.set_shader_parameter("life", known.get("biomass", 0.0))
+		icon.material = material
+		add_child(icon)
+		icons[body.id] = icon

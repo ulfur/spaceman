@@ -75,15 +75,17 @@ func _draw() -> void:
 	var local: String = session.expedition.state.system
 	var active := star_position(local)
 	if selected != local:
-		var target := star_position(selected)
-		draw_line(active, target, Color(0.76, 0.63, 0.43, 0.12), 8, true)
-		draw_dashed_line(active, target, Color("bb9f70"), 1.5, 8, true)
-		# A route-planning pulse, not a travelling ship or elapsed transit.
-		var cursor := active.lerp(target, fmod(phase * 0.15, 1.0))
-		draw_circle(cursor, 5, Color(0.9, 0.75, 0.5, 0.16))
-		draw_circle(cursor, 2, Color("f6d49a"))
-		var quote: Dictionary = session.expedition.travel_quote(selected)
-		draw_string(font, (active + target) * 0.5 + Vector2(10, -9), "%d yr" % quote.years, HORIZONTAL_ALIGNMENT_LEFT, -1, 13, Color("dcc08d"))
+		var clipped := clipped_route(active, star_position(selected), chart_region())
+		if not clipped.is_empty():
+			var start: Vector2 = clipped[0]
+			var target: Vector2 = clipped[1]
+			draw_line(start, target, Color(0.76, 0.63, 0.43, 0.12), 8, true)
+			draw_dashed_line(start, target, Color("bb9f70"), 1.5, 8, true)
+			var cursor := start.lerp(target, fmod(phase * 0.15, 1.0))
+			draw_circle(cursor, 5, Color(0.9, 0.75, 0.5, 0.16))
+			draw_circle(cursor, 2, Color("f6d49a"))
+			var quote: Dictionary = session.expedition.travel_quote(selected)
+			draw_string(font, (start + target) * 0.5 + Vector2(10, -9), "%d yr" % quote.years, HORIZONTAL_ALIGNMENT_LEFT, -1, 13, Color("dcc08d"))
 	points.clear()
 	for definition in session.expedition.scenario.systems:
 		var id: String = definition.id
@@ -138,6 +140,8 @@ func _gui_input(event: InputEvent) -> void:
 		mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND if hover_id != "" or zoom_power < -3 else Control.CURSOR_ARROW
 	if event is InputEventMouseButton and event.pressed:
 		if event.button_index in [MOUSE_BUTTON_WHEEL_UP, MOUSE_BUTTON_WHEEL_DOWN]:
+			if event.button_index == MOUSE_BUTTON_WHEEL_UP and zoom_power >= 1.6 and hover_id != "":
+				entered_system.emit(hover_id); accept_event(); return
 			var before: Vector2 = (event.position - chart_region().get_center()) / Vector2(chart_scale(), -chart_scale())
 			zoom_power = clampf(zoom_power + (0.35 if event.button_index == MOUSE_BUTTON_WHEEL_UP else -0.35), -13.0, 2.2)
 			var after: Vector2 = (event.position - chart_region().get_center()) / Vector2(chart_scale(), -chart_scale())
@@ -157,3 +161,19 @@ func _gui_input(event: InputEvent) -> void:
 						if event.double_click: entered_system.emit(id)
 						break
 			accept_event()
+
+static func clipped_route(a: Vector2, b: Vector2, rect: Rect2) -> Array[Vector2]:
+	# Bound dashed geometry before submission: a galactic route can be millions of pixels long.
+	var delta := b - a
+	var low := 0.0
+	var high := 1.0
+	for axis in range(2):
+		if absf(delta[axis]) < 0.00001:
+			if a[axis] < rect.position[axis] or a[axis] > rect.end[axis]: return []
+		else:
+			var first := (rect.position[axis] - a[axis]) / delta[axis]
+			var last := (rect.end[axis] - a[axis]) / delta[axis]
+			low = maxf(low, minf(first, last))
+			high = minf(high, maxf(first, last))
+			if low > high: return []
+	return [a + delta * low, a + delta * high]

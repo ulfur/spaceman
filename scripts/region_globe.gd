@@ -9,6 +9,7 @@ var drag_distance := 0.0
 
 func _ready() -> void:
 	super._ready()
+	globe.show_behind_parent = true
 	mouse_filter = Control.MOUSE_FILTER_STOP
 
 func _process(_delta: float) -> void:

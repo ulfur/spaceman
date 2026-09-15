@@ -1,0 +1,20 @@
+{
+  "cell_ly": 12.0,
+  "galaxy_radius_ly": 50000.0,
+  "catalogue_field_limit": 10000,
+  "outer_orbit_ratio": 2.4,
+  "regional_priors": {"minimum_solar": 0.18, "ore_low": 0.35, "ore_high": 1.8, "ice_equator": 0.45, "ice_polar_gain": 1.5},
+  "reference_orbits": {
+    "eir_iii": {"parent": "eir", "au": 1.15, "period_years": 1.3},
+    "nacre": {"parent": "eir_iii", "au": 0.00257, "period_years": 0.075},
+    "eir_ii": {"parent": "eir", "au": 0.55, "period_years": 0.408},
+    "eir_iv": {"parent": "eir", "au": 2.8, "period_years": 4.685},
+    "vesper_a": {"parent": "vesper", "au": 5.5, "period_years": 15.5},
+    "vesper_b": {"parent": "vesper_a", "au": 0.0041, "period_years": 0.13}
+  },
+  "reference_bodies": [
+    {"id": "eir_ii", "system": "eir", "name": "Eir II", "kind": "world", "description": "A hot inner terrestrial world. Local reconnaissance is required before choosing a surface site.", "baseline": 390.0, "temperature": 390.0, "deposit": 220.0, "seed": 89.0, "spatial": true},
+    {"id": "eir_iv", "system": "eir", "name": "Eir IV", "kind": "world", "description": "A cold outer terrestrial world. Local reconnaissance is required before choosing a surface site.", "baseline": 150.0, "temperature": 150.0, "deposit": 220.0, "seed": 113.0, "spatial": true},
+    {"id": "vesper_a", "system": "vesper", "name": "Vesper A", "kind": "world", "description": "A cold world beyond Vesper's temperate orbits. Vesper B orbits this body.", "baseline": 105.0, "temperature": 105.0, "deposit": 220.0, "seed": 141.0, "spatial": true}
+  ]
+}

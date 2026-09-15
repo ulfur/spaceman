@@ -1,8 +1,9 @@
 extends RefCounted
 ## Stable addresses. No scene nodes, camera state or frame time enter world generation.
 ## Catalogue fields are synthetic; circular coplanar orbit fits use AU and years.
-const CELL_LY := 12.0
-const GALAXY_RADIUS_LY := 50000.0
+static var CONFIG: Dictionary = JSON.parse_string(FileAccess.get_file_as_string("res://data/spatial.json"))
+static var CELL_LY: float = CONFIG.cell_ly
+static var GALAXY_RADIUS_LY: float = CONFIG.galaxy_radius_ly
 const DEFAULT_REGION := Vector2i(40, 18)
 const REGION_GRID := Vector2i(72, 36)
 
@@ -35,10 +36,11 @@ static func region_context(base: Dictionary, body: String, region: Vector2i) -> 
 	rng.seed = source_seed * 100003 + region.y * 72 + region.x + 19
 	context.seed = rng.randi_range(1, 999999)
 	var latitude := deg_to_rad(coordinates(region).y)
+	var prior: Dictionary = CONFIG.regional_priors
 	# Screening priors: annual-mean latitude proxy, not a resolved weather model.
-	context.solar_factor = float(base.get("solar_factor", 1.0)) * (0.18 + 0.82 * cos(latitude))
-	context.ore_factor = float(base.get("ore_factor", 1.0)) * rng.randf_range(0.35, 1.8)
-	context.ice_factor = float(base.get("ice_factor", 1.0)) * (0.45 + absf(sin(latitude)) * 1.5) * rng.randf_range(0.6, 1.4)
+	context.solar_factor = float(base.get("solar_factor", 1.0)) * (prior.minimum_solar + (1.0 - prior.minimum_solar) * cos(latitude))
+	context.ore_factor = float(base.get("ore_factor", 1.0)) * rng.randf_range(prior.ore_low, prior.ore_high)
+	context.ice_factor = float(base.get("ice_factor", 1.0)) * (prior.ice_equator + absf(sin(latitude)) * prior.ice_polar_gain) * rng.randf_range(0.6, 1.4)
 	context["body"] = body
 	return context
 
@@ -47,22 +49,17 @@ static func orbit(body: Dictionary, evidence: Dictionary = {}) -> Dictionary:
 	var parent: String = body.system
 	var au := 1.15
 	var period := 1.3
-	if id == "nacre": parent = "eir_iii"; au = 0.00257; period = 0.075
-	elif id == "vesper_b": parent = "vesper_a"; au = 0.0041; period = 0.13
-	elif id == "eir_ii": au = 0.55; period = 0.408
-	elif id == "eir_iv": au = 2.8; period = 4.685
-	elif id == "vesper_a": au = 5.5; period = 15.5
+	if CONFIG.reference_orbits.has(id):
+		var fit: Dictionary = CONFIG.reference_orbits[id]
+		parent = fit.parent; au = fit.au; period = fit.period_years
 	elif body.get("generated", false):
 		au = (float(evidence.get("orbit_low", 0.6)) + float(evidence.get("orbit_high", 1.4))) * 0.5
 		if id.ends_with("_c"): parent = body.system + "_b"; au = 0.0025; period = 0.07
-		elif id.ends_with("_d"): au *= 2.4
+		elif id.ends_with("_d"): au *= CONFIG.outer_orbit_ratio
 		if not id.ends_with("_c"):
 			var mass := 0.35 if evidence.get("type") == "M V" else (0.75 if evidence.get("type") == "K V" else 1.0)
 			period = sqrt(au * au * au / mass)
 	return {"parent": parent, "au": au, "period_years": period, "phase": fmod(float(body.seed) * 2.399963, TAU)}
 
 static func extra_reference_bodies() -> Array:
-	var result: Array = []
-	for spec in [["eir_ii", "eir", "Eir II", 390.0, 89.0], ["eir_iv", "eir", "Eir IV", 150.0, 113.0], ["vesper_a", "vesper", "Vesper A", 105.0, 141.0]]:
-		result.append({"id": spec[0], "system": spec[1], "name": spec[2], "kind": "world", "description": "A neighbouring world. Local reconnaissance is required before choosing a surface site.", "baseline": spec[3], "temperature": spec[3], "deposit": 220.0, "seed": spec[4], "spatial": true})
-	return result
+	return CONFIG.reference_bodies.duplicate(true)

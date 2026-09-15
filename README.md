@@ -115,3 +115,5 @@ There is no automatic website deployment and no third-party telemetry.
 
 
 The **Living worlds** graphics pass adds native procedural planet rendering, stellar navigation feedback, continuous terrain, a detailed industrial asset kit, operating machinery and a 3D field-trial cutaway. See [visual direction](docs/visual-direction.md) for what the graphics represent and which effects are illustrative. Simulation pause also freezes working machinery; orbital inspection and route-planning feedback use presentation time.
+
+The [spatial expedition milestone](docs/spatial-expedition.md) adds system maps, animated scale changes, geographic site selection and lazy galactic catalogue fields. See the [roadmap](docs/roadmap.md) for continuous-world streaming and the broader simulator direction.

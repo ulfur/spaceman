@@ -121,7 +121,8 @@ func build_interface() -> void:
 	clock = UI.label("", 16, AMBER)
 	time.add_child(clock)
 	UI.spacer(time)
-	time.add_child(UI.label("Light years · Middle / right drag to pan · Galaxy opens the full disc", 14, MUTED))
+	time.add_child(UI.button("Catalogue this field", func(): catalogue_field(Vector2i(roundi(session.chart_center.x / Session.Atlas.CELL_LY), roundi(session.chart_center.y / Session.Atlas.CELL_LY))), "CatalogueField"))
+	time.add_child(UI.label("Light years · Galaxy opens the full disc", 14, MUTED))
 	status = UI.status(bottom)
 	travel_dialog = ConfirmationDialog.new()
 	travel_dialog.name = "ProspectTransit"
@@ -312,6 +313,7 @@ func open_system(id: String) -> void:
 	Nav.go(self, "res://scenes/system.tscn", map.star_position(id), true)
 
 func catalogue_field(cell: Vector2i) -> void:
+	if Vector2(cell).length() * Session.Atlas.CELL_LY > Session.Atlas.GALAXY_RADIUS_LY: return
 	session.catalogue_field(cell)
 	if cell == Vector2i.ZERO: selected = "prospect_0"
 	else: selected = "field_%d_%d_0" % [cell.x, cell.y]

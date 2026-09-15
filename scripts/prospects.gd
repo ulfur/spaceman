@@ -67,13 +67,13 @@ func definitions(expanded: bool = true) -> Dictionary:
 		outer.id = world.id + "_d"
 		outer.name = world.name + " d"
 		outer.seed += 2.0
-		outer.baseline /= sqrt(2.4)
+		outer.baseline /= sqrt(Atlas.CONFIG.outer_orbit_ratio)
 		outer.temperature = outer.baseline
 		result.bodies.append(outer)
 	return result
 
 func catalogue_cell(cell: Vector2i) -> bool:
-	if cell == Vector2i.ZERO or Vector2(cell).length() * Atlas.CELL_LY > Atlas.GALAXY_RADIUS_LY: return false
+	if state.cells.size() >= int(Atlas.CONFIG.catalogue_field_limit) or cell == Vector2i.ZERO or Vector2(cell).length() * Atlas.CELL_LY > Atlas.GALAXY_RADIUS_LY: return false
 	var key := "%d,%d" % [cell.x, cell.y]
 	if key in state.cells: return false
 	var rng := RandomNumberGenerator.new()
@@ -125,6 +125,21 @@ func evidence(id: String) -> Dictionary:
 		known.ambient_k = world.ambient_k
 	return known
 
+func body_evidence(body_id: String) -> Dictionary:
+	var system_id := body_id.left(-2)
+	var known := evidence(system_id)
+	if known.is_empty() or not body_id.ends_with("_d"): return known
+	var ratio: float = Atlas.CONFIG.outer_orbit_ratio
+	for key in ["flux_low", "flux_high"]:
+		if known.has(key): known[key] /= ratio * ratio
+	for key in ["orbit_low", "orbit_high"]:
+		if known.has(key): known[key] *= ratio
+	for key in ["ambient_k", "equilibrium_k"]:
+		if known.has(key): known[key] /= sqrt(ratio)
+	if known.has("solar_factor"): known.solar_factor = minf(1.8, (known.flux_low + known.flux_high) * 0.5)
+	known.planet_name = known.name + " d"
+	return known
+
 func can_observe(id: String, method: String, current_system: String) -> Dictionary:
 	if not worlds.has(id) or not CONFIG.observations.has(method):
 		return {"ok": false, "message": "Select a generated prospect and a supported instrument."}
@@ -147,13 +162,17 @@ func observe(id: String, method: String, current_system: String, received_hour: 
 
 func surface_context(body_id: String) -> Dictionary:
 	for id in worlds:
-		if body_id == id + "_b" or body_id == id + "_d":
+		if body_id in [id + "_b", id + "_c", id + "_d"]:
 			var world: Dictionary = worlds[id].duplicate(true)
+			if body_id.ends_with("_c"):
+				world.terrain_seed += 1
+				world.pressure = 0.0; world.gravity = 0.16; world.field_earth = 0.0
+				world.co2_fraction = 0.0; world.ambient_k = world.equilibrium_k
 			if body_id.ends_with("_d"):
 				world.terrain_seed += 2
-				world.flux /= 2.4 * 2.4
-				world.equilibrium_k /= sqrt(2.4)
-				world.ambient_k /= sqrt(2.4)
+				world.flux /= pow(Atlas.CONFIG.outer_orbit_ratio, 2.0)
+				world.equilibrium_k /= sqrt(Atlas.CONFIG.outer_orbit_ratio)
+				world.ambient_k /= sqrt(Atlas.CONFIG.outer_orbit_ratio)
 			return {"seed": world.terrain_seed, "solar_factor": minf(1.8, world.flux), "ore_factor": world.ore_factor, "ice_factor": world.ice_factor,
 				"environment": {"flux": world.flux, "pressure": world.pressure, "gravity": world.gravity,
 					"field_earth": world.field_earth, "activity": world.activity, "co2_fraction": world.co2_fraction,
@@ -169,11 +188,11 @@ func restore_json(contents: String, now_hour: int) -> Dictionary:
 		return {"ok": false, "message": "Invalid prospect save."}
 	var candidate: Dictionary = parser.data
 	var seed: Variant = candidate.get("seed")
-	if int(candidate.get("version", 0)) not in [1, 2] or not (seed is float or seed is int) or not is_finite(float(seed)) or seed != floor(seed) or seed < 1 or seed > 999999 or not candidate.get("records") is Dictionary:
+	if (candidate.get("version") != 1 and candidate.get("version") != 2) or not (seed is float or seed is int) or not is_finite(float(seed)) or seed != floor(seed) or seed < 1 or seed > 999999 or not candidate.get("records") is Dictionary:
 		return {"ok": false, "message": "Invalid catalogue seed or record."}
 	var expected = load("res://scripts/prospects.gd").new(int(seed))
 	if int(candidate.version) == 2:
-		if not candidate.get("cells") is Array or candidate.cells.size() > 10000:
+		if not candidate.get("cells") is Array or candidate.cells.size() > int(Atlas.CONFIG.catalogue_field_limit):
 			return {"ok": false, "message": "Invalid catalogue fields."}
 		for key in candidate.cells:
 			if not key is String: return {"ok": false, "message": "Invalid field address."}
