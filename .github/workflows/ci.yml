@@ -39,7 +39,8 @@ jobs:
         run: |
           mkdir -p build
           godot --headless --path . --editor --import 2>&1 | tee build/import.log
-          if grep -E 'SCRIPT ERROR|Parse Error|ERROR:' build/import.log; then exit 1; fi
+          godot --headless --path . --script res://tools/check_scripts.gd 2>&1 | tee -a build/import.log
+          if grep -E 'SCRIPT ERROR|Parse Error|ERROR:|FAIL:' build/import.log; then exit 1; fi
       - name: Deterministic simulation tests
         timeout-minutes: 2
         run: |

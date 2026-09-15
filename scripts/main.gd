@@ -127,6 +127,8 @@ func refresh() -> void:
 		var known: Dictionary = session.prospects.evidence(body.system)
 		subtitle.text = "LOCAL PROBE  /  Climate and native life unresolved. Globe is a schematic reconstruction."
 		telemetry.text = "IRRADIANCE %.2f–%.2f EARTH  /  GRAVITY %.2f g\nPRESSURE %.2f bar  /  MAGNETIC FIELD %.2f Earth · geometry unresolved" % [known.flux_low, known.flux_high, known.gravity, known.pressure, known.field_earth]
+		body = body.duplicate(true)
+		body.pressure = known.pressure
 	view.show_body(body)
 	refresh_operations(body)
 

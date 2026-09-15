@@ -43,6 +43,7 @@ func build_chamber() -> void:
 	env.background_mode = Environment.BG_COLOR
 	env.background_color = Color("080f16")
 	env.ambient_light_source = Environment.AMBIENT_SOURCE_COLOR
+	env.ambient_light_sky_contribution = 0.0
 	env.ambient_light_color = Color("96b8bf")
 	env.ambient_light_energy = 0.65
 	env.tonemap_mode = Environment.TONE_MAPPER_FILMIC

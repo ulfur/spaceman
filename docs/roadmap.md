@@ -32,3 +32,8 @@ Before review: run legacy and new simulation tests, malformed-save checks, share
 ## After playtesting this build
 
 Ask whether scouting changes the destination you choose, whether a dim or ice-poor region changes your construction plan, and whether you can identify why a trial is failing. Compare a filtered daylight chamber with a heavily sheltered, artificially lit one. Fix pacing and legibility before adding more equipment. The next physical models should carry those budgets outside the enclosure and make scaling an explicit engineering problem.
+
+
+### Cross-cutting visual pass — Living worlds
+
+A graphics pass now spans the current orbital, observatory, surface and trial screens: larger layered planets, stellar navigation feedback, continuous geology, detailed instanced/batched industrial art, operating-state animation and a physical trial cutaway. See [visual direction](visual-direction.md) for scope and rendering limits. This advances the look of the existing prototype; streamed planetary terrain, biome simulation, local weather and embodied exploration remain future work.

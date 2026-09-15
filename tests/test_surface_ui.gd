@@ -106,6 +106,27 @@ func run() -> void:
 	check(game.site.state.milestone, "Rendered production chain establishes refuge")
 	game.world.zoom_camera(-20)
 	await capture("06-surface-industry.png")
+	# Rendering must move operational machinery without spending simulation resources.
+	var saved_before_motion: String = game.session.save_json()
+	var rotor: Node3D = game.world.structures[1].get_node("Rotor")
+	var paused_pose: Transform3D = rotor.transform
+	game.world._process(0.2)
+	check(rotor.transform.is_equal_approx(paused_pose), "Pause freezes machinery animation")
+	game.world.motion_rate = 1.0
+	game.world._process(0.5)
+	check(not rotor.transform.is_equal_approx(paused_pose), "Operating machinery has a moving rendered part")
+	game.world.motion_rate = 0.0
+	check(game.session.save_json() == saved_before_motion, "Presentation motion does not change authoritative state")
+	# Actual paused/working evidence, useful in addition to still screenshots.
+	game.world.zoom_camera(-9)
+	game.set_speed(1)
+	for frame in range(24):
+		await create_timer(0.08).timeout
+		await capture("motion-%02d.png" % frame)
+	game.set_speed(0)
+	game.world.zoom_camera(9)
+	print("Graphics profile: %d draw calls; %d visible primitives" % [Performance.get_monitor(Performance.RENDER_TOTAL_DRAW_CALLS_IN_FRAME), Performance.get_monitor(Performance.RENDER_TOTAL_PRIMITIVES_IN_FRAME)])
+
 	check(game.get_global_rect().encloses(game.find_child("Toolbelt", true, false).get_global_rect()), "Toolbelt fits normal window")
 	check(await Driver.click(self, game, "ToggleStructure"), "Machine action is reachable")
 	check(not game.site.structure_at(game.selected.x, game.selected.y).enabled, "Selected installation can be suspended")

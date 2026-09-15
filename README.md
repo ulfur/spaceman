@@ -112,3 +112,6 @@ This is an early gameplay prototype. It includes two authored systems plus six g
 Climate and industrial quantities are deliberately simplified. The physical testbed is a bounded engineering model; global climate, propulsion and radiation dosimetry are not solved. The globe is a procedural shader; each 3D sector is a bounded region, not a full traversable planet. Its rovers illustrate activity rather than performing physical pathfinding. Prospects generates a small neighbourhood, not a full galaxy. Exposed-life viability on generated worlds, walking robots, autonomous branching policies, detailed ship construction, ship upgrades, sound, and multiplayer remain future work.
 
 There is no automatic website deployment and no third-party telemetry.
+
+
+The **Living worlds** graphics pass adds native procedural planet rendering, stellar navigation feedback, continuous terrain, a detailed industrial asset kit, operating machinery and a 3D field-trial cutaway. See [visual direction](docs/visual-direction.md) for what the graphics represent and which effects are illustrative. Simulation pause also freezes working machinery; orbital inspection and route-planning feedback use presentation time.
