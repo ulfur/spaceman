@@ -106,8 +106,12 @@ func build_interface() -> void:
 	var title := label("SPACEMAN   /   TESTBEDS", 26)
 	title.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	top.add_child(title)
-	top.add_child(button("SURFACE  /  ESC", open_surface, "TrialSurface"))
-	top.add_child(button("LOCAL ORBIT", open_orbit, "TrialOrbit"))
+	var surface_nav := button("SURFACE  /  ESC", open_surface, "TrialSurface")
+	surface_nav.size_flags_horizontal = Control.SIZE_SHRINK_END
+	top.add_child(surface_nav)
+	var orbit_nav := button("LOCAL ORBIT", open_orbit, "TrialOrbit")
+	orbit_nav.size_flags_horizontal = Control.SIZE_SHRINK_END
+	top.add_child(orbit_nav)
 	clock = label("", 12, CYAN)
 	header.add_child(clock)
 	inventory = label("", 13)
@@ -137,7 +141,7 @@ func build_interface() -> void:
 	var targets := row(controls)
 	for target in [278, 288, 303]:
 		targets.add_child(button("%d K" % target, order.bind("target_k", float(target)), "Target_%d" % target))
-	controls.add_child(button("PRESSURE REGULATOR / OFF", flip.bind("pressure_control"), "PressureControl"))
+	controls.add_child(button("ATMOSPHERE / SEALED", flip.bind("pressure_control"), "PressureControl"))
 	var pressures := row(controls)
 	for target in [0.1, 0.3, 0.8]:
 		pressures.add_child(button("%.1f bar" % target, order.bind("target_bar", target), "Pressure_%d" % int(target * 10)))
@@ -194,7 +198,7 @@ func refresh() -> void:
 		progress.text = "Assembly: 30 metal + 5 components. Sixteen base construction hours."
 		diagram.trial = {}
 		return
-	site.summary()
+	var network: Dictionary = site.summary()
 	var t: Dictionary = structure.trial
 	diagram.trial = t
 	diagram.environment = e
@@ -203,13 +207,26 @@ func refresh() -> void:
 	diagnosis.text = "\n\n".join(reasons) if not reasons.is_empty() else "Trial conditions support the archive culture. This is a local enclosed result."
 	if not ready:
 		diagnosis.text = "Assembly in progress. Advance time while power and service are available."
-	elif not t.operating:
-		diagnosis.text = "ACTUATORS OFFLINE\nNeeds %.1f kW reserved power and 0.002 t components/h. Passive changes continue.\n\n" % Model.load_kw(t) + diagnosis.text
-	buttons.PressureControl.text = "PRESSURE REGULATOR / " + ("ON" if t.pressure_control else "OFF")
+	elif not structure.enabled:
+		diagnosis.text = "SUSPENDED BY ORDER\nPassive exchange and biology continue.\n\n" + diagnosis.text
+	elif not structure.connected:
+		diagnosis.text = "SERVICE LINK LOST\nReconnect the installation to restore its actuators.\n\n" + diagnosis.text
+	elif not structure.powered:
+		diagnosis.text = "POWER DEFICIT\nNetwork reserves %.1f / %.1f kW. Add generation or suspend another load.\n\n" % [network.power_demand, network.power_supply] + diagnosis.text
+	elif goods.components < Model.CONFIG.service_components_t_h:
+		diagnosis.text = "SERVICE PARTS EXHAUSTED\nNeeds 0.002 t components per operating hour.\n\n" + diagnosis.text
+	buttons.PressureControl.text = "ATMOSPHERE / " + ("REGULATING" if t.pressure_control else "SEALED")
+	buttons.PressureControl.tooltip_text = "1 kW gas train: metered native intake, venting and CO₂ separation. Valves close when disabled or unpowered."
 	buttons.WaterFeed.text = "WATER FEED / " + ("ON · 1 kg/h" if t.feed_water else "OFF")
 	buttons.GrowLight.text = "GROW LIGHT / " + ("ON · 0.8 kW" if t.lamp else "OFF")
 	for mode in ["passive", "auto", "heat", "cool"]:
 		buttons["Thermal_" + mode].add_theme_color_override("font_color", CYAN if t.thermal == mode else INK)
+	for target in [278, 288, 303]:
+		buttons["Target_%d" % target].add_theme_color_override("font_color", CYAN if t.target_k == target else INK)
+	for target in [0.1, 0.3, 0.8]:
+		buttons["Pressure_%d" % int(target * 10)].add_theme_color_override("font_color", CYAN if is_equal_approx(t.target_bar, target) else INK)
+	for value in [0, 50, 90]:
+		buttons["Shade_%d" % value].add_theme_color_override("font_color", CYAN if is_equal_approx(t.shade, value / 100.0) else INK)
 	buttons.FitFilter.disabled = not ready or t.filter or t.upgrade != ""
 	buttons.FitCanopy.disabled = not ready or t.canopy or t.upgrade != ""
 	buttons.Inoculate.disabled = not ready or t.biomass_kg > 0.000000001 or session.expedition.state.ship.seeds < 1

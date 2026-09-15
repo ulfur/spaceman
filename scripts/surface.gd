@@ -291,6 +291,9 @@ func refresh() -> void:
 	else:
 		objective.text = "A small beginning."
 	event_label.text = "Enclosed pioneer culture: %d%%\n\nEnclosed life is not a planetary biosphere.\n\nOre → metal → components\nIce → water\nPower + supplies → refuge" % int(report.refuge_progress * 100)
+	if report.trials > 0:
+		event_label.text = "FIELD TRIALS\n%d chambers · %d established\nLive trial culture: %.1f g\n\nHeat, pressure, water and exposure determine the outcome. Open a testbed to inspect its measurements." % [report.trials, report.established_trials, report.trial_biomass_g]
+		objective.text = "A climate, in miniature." if report.established_trials > 0 else "Test the conditions."
 	if state.events.size() > 0:
 		event_label.text += "\n\n" + state.events[-1].text
 	update_clock()

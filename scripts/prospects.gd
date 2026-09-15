@@ -43,11 +43,12 @@ func reset(seed: int = 1701) -> void:
 		# Separate stream preserves all previously generated terrain/routes.
 		var atmosphere_rng := RandomNumberGenerator.new()
 		atmosphere_rng.seed = int(worlds[id].terrain_seed) * 97 + 41
-		worlds[id].co2_fraction = exp(atmosphere_rng.randf_range(log(0.0004), log(0.8)))
+		var model: Dictionary = CONFIG.environment_model
+		worlds[id].co2_fraction = exp(atmosphere_rng.randf_range(log(model.co2_fraction[0]), log(model.co2_fraction[1])))
 		var co2_mass_fraction: float = worlds[id].co2_fraction * 44.0 / (28.0 + 16.0 * worlds[id].co2_fraction)
 		var co2_column: float = pressure * 100000.0 / (worlds[id].gravity * 9.81) * co2_mass_fraction
 		# A grey-atmosphere screening prior, not a spectral climate retrieval.
-		worlds[id].infrared_depth = minf(8.0, 0.15 + 0.015 * pow(co2_column, 0.6))
+		worlds[id].infrared_depth = minf(model.infrared_max, model.infrared_base + model.infrared_coefficient * pow(co2_column, model.infrared_exponent))
 		worlds[id].ambient_k = worlds[id].equilibrium_k * pow(1.0 + 0.75 * worlds[id].infrared_depth, 0.25)
 
 func definitions() -> Dictionary:

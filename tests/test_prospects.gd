@@ -24,7 +24,7 @@ func _initialize() -> void:
 		check(absf(truth.flux - truth.luminosity / pow(truth.orbit_au, 2)) < 0.000001, "Inverse-square irradiation " + id)
 		check(absf(truth.gravity - truth.mass / pow(truth.radius, 2)) < 0.000001, "Mass-radius-gravity consistency " + id)
 		var evidence: Dictionary = catalogue.evidence(id)
-		check(not evidence.has("flux_low") and not evidence.has("pressure") and not evidence.has("ice_factor") and not evidence.has("field_earth"), "Catalogue cannot leak unmeasured planet " + id)
+		check(not evidence.has("flux_low") and not evidence.has("pressure") and not evidence.has("ice_factor") and not evidence.has("field_earth") and not evidence.has("co2_fraction") and not evidence.has("ambient_k"), "Catalogue cannot leak unmeasured planet " + id)
 		check(not session.expedition.state.observations.has(id + "_b"), "No distant ground truth in orbital observations " + id)
 	var target := "prospect_0"
 	var truth_before: Dictionary = catalogue.worlds.duplicate(true)

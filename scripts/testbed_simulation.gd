@@ -5,12 +5,14 @@ extends RefCounted
 static var CONFIG: Dictionary = JSON.parse_string(FileAccess.get_file_as_string("res://data/testbeds.json"))
 const R := 8.314462618
 const SIGMA := 5.670374419e-8
-const MOLAR := {"inert": 0.028, "co2": 0.044, "oxygen": 0.032}
+const MOLAR := {"inert": 0.028, "co2": 0.044, "oxygen": 0.032, "vapor": 0.018}
+const FUSION_J_KG := 334000.0
+const VAPORIZATION_J_KG := 2500000.0
 
 static func create(environment: Dictionary) -> Dictionary:
 	var moles: float = environment.pressure * 100000.0 * CONFIG.volume_m3 / (R * environment.ambient_k)
 	var gas := {"inert": moles * (1.0 - environment.co2_fraction) * MOLAR.inert,
-		"co2": moles * environment.co2_fraction * MOLAR.co2, "oxygen": 0.0}
+		"co2": moles * environment.co2_fraction * MOLAR.co2, "oxygen": 0.0, "vapor": 0.0}
 	return {"version": 1, "temperature_k": environment.ambient_k, "gas": gas,
 		"water_kg": 0.0, "biomass_kg": 0.0, "detritus_kg": 0.0, "nutrients_kg": 0.0, "bound_nutrients_kg": 0.0,
 		"captured_co2_kg": 0.0, "gas_in_kg": gas.inert + gas.co2, "gas_out_kg": 0.0,
@@ -32,25 +34,38 @@ static func load_kw(state: Dictionary) -> float:
 
 static func radiation(state: Dictionary, environment: Dictionary) -> Dictionary:
 	var column: float = environment.pressure * 100000.0 / (environment.gravity * 9.81)
+	var model: Dictionary = CONFIG.radiation
 	# Coarse screening proxies, not a transport calculation or a dose in Sv.
 	# Field affects only the charged-particle term; there is a cosmic-ray floor.
-	var uv: float = environment.flux * (0.3 + 3.0 * environment.activity) * exp(-column / 3000.0)
-	var particles: float = (0.15 + environment.activity / (1.0 + 2.0 * environment.field_earth)) * exp(-column / 1500.0)
-	uv *= (0.02 if state.filter else 0.65) * (1.0 - state.shade)
+	var uv: float = environment.flux * (model.uv_quiet + model.uv_activity * environment.activity) * exp(-column / model.uv_column_scale_kg_m2)
+	var particles: float = (model.particle_floor + environment.activity / (1.0 + model.field_factor * environment.field_earth)) * exp(-column / model.particle_column_scale_kg_m2)
+	uv *= (CONFIG.upgrades.filter.uv_transmission if state.filter else model.glazing_uv_transmission) * (1.0 - state.shade)
 	if state.canopy:
-		uv *= 0.001
-		particles *= exp(-250.0 / 100.0)
+		uv *= CONFIG.upgrades.canopy.uv_transmission
+		var shield_column: float = CONFIG.upgrades.canopy.cost.ore * 1000.0 / CONFIG.area_m2
+		particles *= exp(-shield_column / model.shield_column_scale_kg_m2)
 	return {"uv": uv, "particles": particles, "column_kg_m2": column}
 
 static func sunlight_w(state: Dictionary, environment: Dictionary, light: float) -> float:
-	return 1361.0 * environment.flux * 0.25 * CONFIG.area_m2 * light * CONFIG.solar_transmission * (1.0 - state.shade) * (0.8 if state.filter else 1.0) * (0.01 if state.canopy else 1.0)
+	return 1361.0 * environment.flux * 0.25 * CONFIG.area_m2 * light * CONFIG.solar_transmission * (1.0 - state.shade) * (CONFIG.upgrades.filter.light_transmission if state.filter else 1.0) * (CONFIG.upgrades.canopy.light_transmission if state.canopy else 1.0)
 
 static func par_w(state: Dictionary, environment: Dictionary, light: float) -> float:
 	return sunlight_w(state, environment, light) * 0.45 + (CONFIG.lamp_kw * 1000.0 * CONFIG.lamp_par_fraction if state.lamp and state.operating else 0.0)
 
 static func saturation_pa(temperature: float) -> float:
-	# Constant-latent-heat Clausius-Clapeyron approximation near liquid water.
-	return 611.657 * exp(5420.0 * (1.0 / 273.16 - 1.0 / temperature))
+	# Constant-latent-heat approximation; sublimation below the freezing range.
+	return 611.657 * exp((6140.0 if temperature < 273.16 else 5420.0) * (1.0 / 273.16 - 1.0 / temperature))
+
+static func liquid_fraction(temperature: float) -> float:
+	# Smear the freezing transition across one kelvin to keep the solve continuous.
+	return clampf(temperature - 273.15, 0.0, 1.0)
+
+static func equilibrium_vapor(temperature: float, water_mass: float) -> float:
+	return minf(water_mass, saturation_pa(temperature) * CONFIG.volume_m3 * MOLAR.vapor / (R * temperature))
+
+static func water_enthalpy(temperature: float, water_mass: float) -> float:
+	var vapor: float = equilibrium_vapor(temperature, water_mass)
+	return (water_mass - vapor) * liquid_fraction(temperature) * FUSION_J_KG + vapor * (FUSION_J_KG + VAPORIZATION_J_KG)
 
 static func limitations(state: Dictionary, environment: Dictionary, light: float) -> Array[String]:
 	var reasons: Array[String] = []
@@ -95,11 +110,11 @@ static func step(state: Dictionary, environment: Dictionary, light: float, goods
 	if state.operating:
 		goods.components -= CONFIG.service_components_t_h
 		if state.feed_water:
-			var delivered: float = minf(CONFIG.water_feed_kg_h, minf(goods.water * 1000.0, CONFIG.water_capacity_kg - state.water_kg))
+			var delivered: float = minf(CONFIG.water_feed_kg_h, minf(goods.water * 1000.0, maxf(0.0, CONFIG.water_capacity_kg - state.water_kg - state.gas.vapor)))
 			goods.water -= delivered / 1000.0
 			state.water_kg += delivered
 			state.water_in_kg += delivered
-		var flushed: float = minf(state.water_kg, CONFIG.service_water_kg_h)
+		var flushed: float = minf(state.water_kg * liquid_fraction(state.temperature_k), CONFIG.service_water_kg_h)
 		state.water_kg -= flushed
 		state.water_waste_kg += flushed
 		if state.upgrade != "":
@@ -108,12 +123,14 @@ static func step(state: Dictionary, environment: Dictionary, light: float, goods
 				state[state.upgrade] = true
 				state.upgrade = ""
 				state.upgrade_progress = 0.0
-	var ambient_moles: float = environment.pressure * 100000.0 * CONFIG.volume_m3 / (R * state.temperature_k)
-	for kind in MOLAR:
-		var fraction: float = environment.co2_fraction if kind == "co2" else (1.0 - environment.co2_fraction if kind == "inert" else 0.0)
-		var ambient_mass: float = ambient_moles * fraction * MOLAR[kind]
-		exchange(state, kind, (ambient_mass - state.gas[kind]) * CONFIG.leak_fraction_h)
 	if state.operating and state.pressure_control:
+		# The operating gas train has parasitic exchange. Its normally closed
+		# isolation valves seal when disabled or unpowered; hull leaks are omitted.
+		var ambient_moles: float = environment.pressure * 100000.0 * CONFIG.volume_m3 / (R * state.temperature_k)
+		for kind in MOLAR:
+			var fraction: float = environment.co2_fraction if kind == "co2" else (1.0 - environment.co2_fraction if kind == "inert" else 0.0)
+			var ambient_mass: float = ambient_moles * fraction * MOLAR[kind]
+			exchange(state, kind, (ambient_mass - state.gas[kind]) * CONFIG.leak_fraction_h)
 		var present_moles: float = pressure(state) * 100000.0 * CONFIG.volume_m3 / (R * state.temperature_k)
 		var desired_moles: float = state.target_bar * 100000.0 * CONFIG.volume_m3 / (R * state.temperature_k)
 		var pump_limit: float = CONFIG.pump_mol_h * environment.pressure / (environment.pressure + 0.05)
@@ -125,10 +142,10 @@ static func step(state: Dictionary, environment: Dictionary, light: float, goods
 			for kind in MOLAR:
 				exchange(state, kind, state.gas[kind] * change_moles / present_moles)
 		# Regenerative separator moves carbon into a captured store, not oblivion.
-		var co2_limit: float = 2000.0 * CONFIG.volume_m3 / (R * state.temperature_k) * MOLAR.co2
+		var co2_limit: float = CONFIG.regulator_co2_pa * CONFIG.volume_m3 / (R * state.temperature_k) * MOLAR.co2
 		var concentrated: float = minf(maxf(0.0, co2_limit - state.gas.co2), pump_limit * environment.co2_fraction * MOLAR.co2)
 		exchange(state, "co2", concentrated)
-		var captured: float = minf(maxf(0.0, state.gas.co2 - co2_limit), 0.5)
+		var captured: float = minf(maxf(0.0, state.gas.co2 - co2_limit), CONFIG.capture_co2_kg_h)
 		state.gas.co2 -= captured
 		state.captured_co2_kg += captured
 	var solar: float = sunlight_w(state, environment, light)
@@ -170,16 +187,23 @@ static func step(state: Dictionary, environment: Dictionary, light: float, goods
 			state.stable_hours = 0
 	# Backward Euler: bounded nonlinear solve instead of unstable explicit T^4.
 	# Energy stored by photosynthesis is removed from the absorbed-light budget.
+	var water_mass: float = state.water_kg + state.gas.vapor
+	var previous_water_heat: float = state.water_kg * liquid_fraction(state.temperature_k) * FUSION_J_KG + state.gas.vapor * (FUSION_J_KG + VAPORIZATION_J_KG)
 	var low := 50.0
 	var high := 1000.0
 	for iteration in range(34):
 		var trial: float = (low + high) * 0.5
-		var residual: float = CONFIG.heat_capacity_j_k * (trial - state.temperature_k) / 3600.0 - solar - lamp_heat - state.heat_w + thermal_loss(trial, environment) + chemical_j / 3600.0
+		var latent_w: float = (water_enthalpy(trial, water_mass) - previous_water_heat) / 3600.0
+		var residual: float = CONFIG.heat_capacity_j_k * (trial - state.temperature_k) / 3600.0 - solar - lamp_heat - state.heat_w + thermal_loss(trial, environment) + chemical_j / 3600.0 + latent_w
 		if residual > 0.0: high = trial
 		else: low = trial
 	var temperature: float = (low + high) * 0.5
 	if absf(temperature - state.temperature_k) > 0.0000001:
 		state.temperature_k = temperature
+	var vapor: float = equilibrium_vapor(state.temperature_k, water_mass)
+	if absf(vapor - state.gas.vapor) > 0.000000001:
+		state.gas.vapor = vapor
+		state.water_kg = water_mass - vapor
 	var after: Dictionary = state.duplicate(false)
 	after.erase("history")
 	return before != after
@@ -228,6 +252,7 @@ static func valid(state: Variant, now: int) -> bool:
 	for kind in MOLAR:
 		var amount: Variant = state.gas.get(kind)
 		if not (amount is float or amount is int) or not is_finite(float(amount)) or amount < 0.0 or amount > 10000.0: return false
+	if state.water_kg + state.gas.vapor > CONFIG.water_capacity_kg + 0.0000001: return false
 	if absf(mass_error(state)) > 0.00001: return false
 	if state.history.size() > int(CONFIG.history_samples): return false
 	var previous := -1

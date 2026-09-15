@@ -251,7 +251,7 @@ func _step_hour() -> bool:
 	var changed := false
 	var biomass := 0.0
 	for structure in state.structures:
-		# Passive heat exchange, leakage and biology continue without power.
+		# Heat exchange, phase changes and biology continue without power.
 		if structure.kind == "testbed" and structure.progress >= 1.0:
 			var established: bool = structure.trial.established
 			if Testbed.step(structure.trial, environment, cell_at(structure.x, structure.z).light, state.resources, structure.powered):
@@ -390,11 +390,19 @@ func summary() -> Dictionary:
 	var output := _allocate_power()
 	var connected := 0
 	var refuge_progress := 0.0
+	var trials := 0
+	var established_trials := 0
+	var trial_biomass_g := 0.0
 	for structure in state.structures:
 		if structure.connected:
 			connected += 1
 		refuge_progress = maxf(refuge_progress, structure.culture)
+		if structure.kind == "testbed":
+			trials += 1
+			established_trials += 1 if structure.trial.established else 0
+			trial_biomass_g += structure.trial.biomass_kg * 1000.0
 	output.merge({"connected_count": connected, "refuge_progress": refuge_progress,
+		"trials": trials, "established_trials": established_trials, "trial_biomass_g": trial_biomass_g,
 		"landed": state.landed, "total_hours": state.total_hours,
 		"completed": state.milestone, "link_range_m": LINK_RANGE * CELL_SIZE})
 	return output

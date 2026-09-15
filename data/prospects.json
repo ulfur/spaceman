@@ -1,20 +1,99 @@
 {
   "default_seed": 1701,
-  "names": ["Silex", "Harrow", "Orison", "Ilex", "Aster", "Morrow"],
-  "stars": [
-    {"type": "K V", "luminosity": [0.18, 0.65], "activity_floor": 0.15, "activity_youth": 2.0, "activity_decay_gyr": 1.5},
-    {"type": "M V", "luminosity": [0.012, 0.07], "activity_floor": 0.25, "activity_youth": 3.5, "activity_decay_gyr": 4.0},
-    {"type": "G V", "luminosity": [0.7, 1.25], "activity_floor": 0.12, "activity_youth": 2.0, "activity_decay_gyr": 1.0}
+  "names": [
+    "Silex",
+    "Harrow",
+    "Orison",
+    "Ilex",
+    "Aster",
+    "Morrow"
   ],
-  "distance_ly": [2.0, 4.3],
-  "flux_earth": [0.18, 2.2],
-  "mass_earth": [0.45, 2.1],
-  "density_earth": [0.8, 1.15],
-  "pressure_bar": [0.015, 4.0],
+  "stars": [
+    {
+      "type": "K V",
+      "luminosity": [
+        0.18,
+        0.65
+      ],
+      "activity_floor": 0.15,
+      "activity_youth": 2.0,
+      "activity_decay_gyr": 1.5
+    },
+    {
+      "type": "M V",
+      "luminosity": [
+        0.012,
+        0.07
+      ],
+      "activity_floor": 0.25,
+      "activity_youth": 3.5,
+      "activity_decay_gyr": 4.0
+    },
+    {
+      "type": "G V",
+      "luminosity": [
+        0.7,
+        1.25
+      ],
+      "activity_floor": 0.12,
+      "activity_youth": 2.0,
+      "activity_decay_gyr": 1.0
+    }
+  ],
+  "distance_ly": [
+    2.0,
+    4.3
+  ],
+  "flux_earth": [
+    0.18,
+    2.2
+  ],
+  "mass_earth": [
+    0.45,
+    2.1
+  ],
+  "density_earth": [
+    0.8,
+    1.15
+  ],
+  "pressure_bar": [
+    0.015,
+    4.0
+  ],
   "observations": {
-    "photometry": {"label": "Orbit fit", "hours": 36, "fuel": 0.25, "alloy": 0.0},
-    "spectrum": {"label": "Spectrum", "hours": 96, "fuel": 0.5, "alloy": 0.0},
-    "monitor": {"label": "Activity watch", "hours": 240, "fuel": 0.4, "alloy": 0.0},
-    "probe": {"label": "Local probe", "hours": 12, "fuel": 0.5, "alloy": 1.0}
+    "photometry": {
+      "label": "Orbit fit",
+      "hours": 36,
+      "fuel": 0.25,
+      "alloy": 0.0
+    },
+    "spectrum": {
+      "label": "Spectrum",
+      "hours": 96,
+      "fuel": 0.5,
+      "alloy": 0.0
+    },
+    "monitor": {
+      "label": "Activity watch",
+      "hours": 240,
+      "fuel": 0.4,
+      "alloy": 0.0
+    },
+    "probe": {
+      "label": "Local probe",
+      "hours": 12,
+      "fuel": 0.5,
+      "alloy": 1.0
+    }
+  },
+  "environment_model": {
+    "co2_fraction": [
+      0.0004,
+      0.8
+    ],
+    "infrared_base": 0.15,
+    "infrared_coefficient": 0.015,
+    "infrared_exponent": 0.6,
+    "infrared_max": 8.0
   }
 }

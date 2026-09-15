@@ -58,6 +58,7 @@ func _draw() -> void:
 	if trial.filter:
 		draw_line(a + roof + Vector2(0, -6), b + roof + Vector2(0, -6), CYAN, 3, true)
 	text_at(Vector2(28, 32), "CLOSED FIELD TRIAL  /  16 m² · 32 m³", 13, MUTED)
+	draw_rect(Rect2(center + Vector2(-134, -48), Vector2(272, 76)), Color(0.03, 0.07, 0.09, 0.9))
 	text_at(center + Vector2(-126, -10), "%.1f K" % temperature, 36, INK)
 	text_at(center + Vector2(-124, 17), "%.3f bar    /    %.1f g live" % [Model.pressure(trial), trial.biomass_kg * 1000], 14, CYAN)
 	var solar: float = Model.sunlight_w(trial, environment, light)
@@ -68,14 +69,16 @@ func _draw() -> void:
 	text_at(Vector2(width - 175, 65), "UV / PARTICLES", 11, Color("c0a6d8"))
 	var exposure: Dictionary = Model.radiation(trial, environment)
 	text_at(Vector2(width - 175, 85), "%.2f / %.2f index" % [exposure.uv, exposure.particles], 15, Color("c0a6d8"))
-	line_arrow(Vector2(28, diagram_height - 90), a + Vector2(0, -25), heat_color)
+	if trial.heat_w >= 0:
+		line_arrow(Vector2(28, diagram_height - 90), a + Vector2(0, -25), heat_color)
+	else:
+		line_arrow(a + Vector2(0, -25), Vector2(28, diagram_height - 90), heat_color)
 	text_at(Vector2(28, diagram_height - 63), "THERMAL CONTROL", 11, heat_color)
 	text_at(Vector2(28, diagram_height - 40), "%+.0f W" % trial.heat_w, 18, heat_color)
 	line_arrow(c + Vector2(0, -15), Vector2(width - 25, diagram_height - 90), CYAN)
-	text_at(Vector2(width - 193, diagram_height - 63), "WATER / GAS STORES", 11, CYAN)
-	var mass := 0.0
-	for amount in trial.gas.values(): mass += amount
-	text_at(Vector2(width - 193, diagram_height - 40), "%.1f / %.1f kg" % [trial.water_kg, mass], 18, CYAN)
+	var phase_name: String = "LIQUID" if temperature >= 274.15 else ("ICE" if temperature < 273.15 else "ICE + LIQUID")
+	text_at(Vector2(width - 193, diagram_height - 63), phase_name + " / VAPOUR", 11, CYAN)
+	text_at(Vector2(width - 193, diagram_height - 40), "%.1f / %.2f kg" % [trial.water_kg, trial.gas.vapor], 18, CYAN)
 	text_at(center + Vector2(-127, 120), "CANOPY FITTED" if trial.canopy else ("UV FILTER FITTED" if trial.filter else "STANDARD GLAZING"), 12, MUTED)
 	draw_history(Rect2(40, diagram_height + 20, width - 58, size.y - diagram_height - 48))
 

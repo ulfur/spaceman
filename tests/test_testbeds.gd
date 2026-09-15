@@ -31,6 +31,18 @@ func _initialize() -> void:
 	var trial: Dictionary = Model.create(environment)
 	check(absf(Model.pressure(trial) - environment.pressure) < 0.00000001, "Initial gas mass produces ambient pressure")
 	check(absf(Model.mass_error(trial)) < 0.00000001, "Initial sealed inventory is accounted for")
+	var water_only: Dictionary = Model.create(environment)
+	for kind in water_only.gas: water_only.gas[kind] = 0.0
+	water_only.gas_in_kg = 0.0
+	water_only.temperature_k = 288.0
+	water_only.water_kg = 20.0
+	water_only.water_in_kg = 20.0
+	Model.step(water_only, environment, 0.7, {"components": 0.0, "water": 0.0}, false)
+	check(water_only.gas.vapor > 0.1 and water_only.water_kg > 19, "A sealed water pool supplies vapor while retaining condensed water")
+	check(Model.pressure(water_only) * 100000.0 >= Model.saturation_pa(water_only.temperature_k) - 0.001, "Vapor contributes to chamber pressure")
+	check(absf(Model.mass_error(water_only)) < 0.00000001, "Phase changes transfer mass without creating water")
+	check(water_only.gas_in_kg == 0.0 and water_only.gas_out_kg == 0.0, "Unpowered isolation valves preserve the sealed gas inventory")
+	check(Model.water_enthalpy(275, 20) - Model.water_enthalpy(272, 20) > 6000000, "Freezing/melting includes the latent energy budget")
 	var doubled: Dictionary = trial.duplicate(true)
 	doubled.temperature_k *= 2
 	check(absf(Model.pressure(doubled) - 2 * Model.pressure(trial)) < 0.00000001, "Ideal gas pressure follows absolute temperature")
