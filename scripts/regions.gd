@@ -59,7 +59,7 @@ func _ready() -> void:
 	approach = UI.button("Reconnoitre this site →", approach_region, "ApproachRegion", true)
 	right.add_child(approach)
 	var footer := UI.footer(self)
-	footer.add_child(UI.label("80 m working sites · Terrain between sites is not yet traversable · Procedural surface reconstruction", 13, UI.MUTED))
+	footer.add_child(UI.label("Screening is provisional · Survey ground deposits before committing a factory module", 13, UI.MUTED))
 	status = UI.status(footer)
 	select_region(selected)
 	Nav.arrive(self, globe)

@@ -35,6 +35,12 @@ func _draw() -> void:
 		var hit: Dictionary = universe.contact_hits[id]
 		var point: Vector2 = hit.point
 		var selected: bool = id == universe.selected
+		var grouped_moons := 0
+		for body in universe.session.expedition.scenario.bodies:
+			if body.kind != "moon" or body.system != universe.reference or not universe.positions.has(body.id): continue
+			if Mechanics.orbit(universe.session, body.id).parent == id and universe.project_body(body.id).distance_to(point) < 20:
+				grouped_moons += 1
+				if body.id == universe.selected: selected = true
 		var hover: bool = id == universe.hovered
 		var stellar: bool = not universe.session.expedition.state.bodies.has(id)
 		var color := GOLD if selected else (Color("ffd5a1") if stellar else CYAN)
@@ -42,9 +48,7 @@ func _draw() -> void:
 			var outward := (point - center).normalized()
 			var tangent := Vector2(-outward.y, outward.x)
 			draw_colored_polygon(PackedVector2Array([point + outward * 7, point - outward * 5 + tangent * 4, point - outward * 5 - tangent * 4]), Color(color, 1.0 if hover else 0.7))
-			var label_at := point + Vector2(12, 4)
-			if point.x > center.x: label_at.x = point.x - ThemeDB.fallback_font.get_string_size(universe.title(id), HORIZONTAL_ALIGNMENT_LEFT, -1, 12).x - 12
-			line_label(label_at, universe.title(id), Color(color, 0.85))
+			line_label(hit.label_at, universe.title(id), Color(color, 0.85))
 			if hover: brackets(point, 0, color)
 			continue
 		if hit.radius < 4:
@@ -53,6 +57,7 @@ func _draw() -> void:
 		if selected or hover: brackets(point, hit.radius, color)
 		if hit.radius > 70 and not hover: continue
 		var caption: String = universe.title(id).to_upper()
+		if grouped_moons > 0: caption += " + %d MOON%s" % [grouped_moons, "S" if grouped_moons > 1 else ""]
 		var below: String = "TARGET" if selected else universe.contact_distance(id) + " from target"
 		var text_size := ThemeDB.fallback_font.get_string_size(caption, HORIZONTAL_ALIGNMENT_LEFT, -1, 13)
 		var at := point + Vector2(maxf(22, hit.radius + 18), -20)

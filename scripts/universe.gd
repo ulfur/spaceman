@@ -33,7 +33,6 @@ var frame_target := Rect2()
 var zoom_target := -1.0
 var hovered := ""
 var contact_hits: Dictionary = {}
-var survey_layer := "solar"
 
 static func shared(owner: Node) -> Node:
 	# Engine autoloads enter the tree before the main scene. Never attach a
@@ -237,7 +236,7 @@ func normalized_position(at: Array) -> Vector3:
 func project_position(at: Array) -> Vector3:
 	var relative := normalized_position(at)
 	if camera.is_position_behind(relative): return Vector3(-100000, -100000, -1)
-	var point := camera.unproject_position(relative) + frame.position
+	var point := camera.unproject_position(relative) * frame.size / Vector2(viewport.size) + frame.position
 	return Vector3(point.x, point.y, relative.distance_to(camera.position))
 
 func project_body(id: String) -> Vector2:
@@ -292,12 +291,11 @@ func update_contacts() -> void:
 	for body in session.expedition.scenario.bodies:
 		if body.system == reference and positions.has(body.id): ids.append(body.id)
 	var occupied: Array[Rect2] = []
-	var bounds := frame.grow(-30)
+	var bounds := Rect2(frame.position + Vector2(30, 38), frame.size - Vector2(60, 100))
 	for id in ids:
 		var projected := project_body(id)
 		var on_screen := points.has(id) and bounds.has_point(projected)
 		if on_screen and session.expedition.state.bodies.has(id):
-			var body: Dictionary = session.expedition.state.bodies[id]
 			var parent: String = Mechanics.orbit(session, id).parent
 			if points.has(parent) and projected.distance_to(points[parent].point) < 20: continue
 		if on_screen and occluded(id): continue
@@ -320,6 +318,12 @@ func update_contacts() -> void:
 				else: projected.x = clampf(projected.x + 114, bounds.position.x, bounds.end.x)
 		var radius: float = points[id].radius if on_screen else 0.0
 		contact_hits[id] = {"point": projected, "radius": radius, "edge": not on_screen}
+		if not on_screen:
+			var width := ThemeDB.fallback_font.get_string_size(title(id), HORIZONTAL_ALIGNMENT_LEFT, -1, 12).x
+			var label_at := projected + Vector2(12, 4)
+			if projected.x > bounds.get_center().x: label_at.x = projected.x - width - 12
+			contact_hits[id].label_at = label_at
+			contact_hits[id].label_rect = Rect2(label_at - Vector2(5, 15), Vector2(width + 10, 22))
 		occupied.append(Rect2(projected - Vector2(100, 38), Vector2(200, 76)))
 
 func pick_contact(pixel: Vector2, exclude: String = "") -> String:
@@ -331,6 +335,7 @@ func pick_contact(pixel: Vector2, exclude: String = "") -> String:
 		var hit: Dictionary = contact_hits[id]
 		var delta: float = pixel.distance_to(hit.point)
 		var limit := maxf(18.0, hit.radius)
+		if hit.has("label_rect") and hit.label_rect.has_point(pixel): return id
 		if delta > limit: continue
 		# Resolve small contact markers before a large planet silhouette.
 		var score := delta / limit + (1.0 if hit.radius > 20 else 0.0)
@@ -357,7 +362,7 @@ func zoom(factor: float) -> void:
 
 func focus_region(id: String, region: Vector2i) -> void:
 	tracking = id
-	fly(positions[id], radii[id] * 2.6, Mechanics.orientation(session, id, session.elapsed_hours()) * Mechanics.normal(region))
+	fly(positions[id], radii[id] * 2.85, Mechanics.orientation(session, id, session.elapsed_hours()) * Mechanics.normal(region))
 
 func project_region(id: String, region: Vector2i) -> Vector3:
 	return project_normal(id, Mechanics.normal(region))
@@ -366,14 +371,14 @@ func project_normal(id: String, normal_value: Vector3) -> Vector3:
 	var n := Mechanics.orientation(session, id, session.elapsed_hours()) * normal_value
 	var center := normalized_position(positions[id])
 	var r: float = radii[id] / distance * 1000.0
-	var point := camera.unproject_position(center + n * r) + frame.position
+	var point := camera.unproject_position(center + n * r) * frame.size / Vector2(viewport.size) + frame.position
 	return Vector3(point.x, point.y, n.dot((camera.position - center - n * r).normalized()))
 
 func clear_survey() -> void:
 	for material in materials.values(): material.set_shader_parameter("survey_mode", 0)
 
 func pick_region(id: String, pixel: Vector2) -> Vector2i:
-	var ray := camera.project_ray_normal(pixel - frame.position)
+	var ray := camera.project_ray_normal((pixel - frame.position) * Vector2(viewport.size) / frame.size)
 	var origin := camera.position - normalized_position(positions[id])
 	var r: float = radii[id] / distance * 1000.0
 	var b := origin.dot(ray)

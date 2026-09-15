@@ -74,7 +74,7 @@ func run() -> void:
 	await click("FramePlanet"); await settle()
 	check(universe.project_body("prospect_3_c").distance_to(universe.frame.get_center()) < 1, "Focus approaches the selected contact")
 	check(universe.contact_hits.has("prospect_3_b"), "The parent remains accessible as an off-screen bearing")
-	point(universe.contact_hits.prospect_3_b.point)
+	point(universe.contact_hits.prospect_3_b.label_rect.get_center())
 	check(game.selected == "prospect_3_b", "Off-screen parent bearing selects the actual parent")
 	await click("FrameMoons"); await settle()
 	await capture("32-command-orbit")
@@ -84,6 +84,15 @@ func run() -> void:
 	await settle()
 	check(game.name == "Regions" and universe.mode == "regions", "Surface enters geographic survey")
 	check(universe.distance < universe.radii.prospect_3_b * 3, "Survey approaches the chosen geographic hemisphere")
+	# Rendering resolution and instrument coordinates must remain independent.
+	var previous_shrink: int = universe.container.stretch_shrink
+	universe.container.stretch_shrink = 3
+	await process_frame; await process_frame
+	check(universe.project_body("prospect_3_b").distance_to(universe.frame.get_center()) < 1, "Changing rendering resolution preserves the instrument frame")
+	var center_region: Vector2i = universe.pick_region("prospect_3_b", universe.frame.get_center())
+	check(center_region == Vector2i(48, 15), "Raycasting respects scaled SubViewport coordinates")
+	universe.container.stretch_shrink = previous_shrink
+	await process_frame; await process_frame
 	await click("Layer_ore")
 	check(game.globe.screening == "ore", "Screening layer is controlled from the visible rail")
 	var region := Vector2i(47, 15)
