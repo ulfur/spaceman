@@ -1,5 +1,7 @@
 # First Rain — design and implementation notes
 
+For the broader intended game and the direction established after playtesting, see [Game direction](vision.md). The implementation notes below describe the current prototype; future surface industry, richer habitability, and continuous time are not yet implemented.
+
 ## The premise
 
 Commander Spaceman commands Spaceship. He is a modified digital copy of the biological commander, with instincts and bodily drives adapted for digital existence. He can eventually inhabit manufactured robots, but the ship and its computer are his continuous self.
@@ -66,6 +68,8 @@ A dark observation console with restrained teal telemetry and warm amber decisio
 The current UI targets desktop landscape windows around 1280×800 and larger. Compact landscape rendering is checked at 1100×760. Phone portrait interaction and controller navigation are not finished features.
 
 ## Next milestones
+
+The following was the initial prototype roadmap. The proposed next experiment is now a focused surface-industry slice with spatial decisions and time controls; see [Game direction](vision.md#proposed-next-bounded-experiment). The original ideas below remain candidates, not a fixed implementation order.
 
 1. Playtest the departure/return loop. Tune the value of waiting locally versus committing to another journey, resource pressure, and how much agency the player has before departure.
 2. Add policy conditions and meaningful unattended failures, with a chronological explanation on return.

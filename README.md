@@ -6,6 +6,8 @@ He is a braincast of the original commander: a digital mind adapted to life as a
 
 **First Rain** is the first playable expedition. Leave a factory on a frozen world. Travel to another star. Come home to the consequences.
 
+The broader goal spans a galactic map, star systems, planetary engineering, RTS-style surface industry, and eventually first-person robot embodiment. See [Game direction](docs/vision.md) for that vision and the distinction between current features and future work.
+
 ## Play
 
 Open `project.godot` in **Godot 4.5 standard** and press **F6 on `main.tscn`**, or **F5** to run the project. No plugins, external art assets, Python service, or package installation are required. CI pins Godot 4.5; newer engine versions are not yet part of the test matrix.
