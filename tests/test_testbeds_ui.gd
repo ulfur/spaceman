@@ -108,7 +108,7 @@ func run() -> void:
 	await click("TrialWeek")
 	await click("TrialWeek")
 	check(game.structure.trial.established and game.structure.trial.biomass_kg > 0.02, "Configured UI experiment establishes a culture")
-	var recorded := session.save_json()
+	var recorded: String = session.save_json()
 	await click("Graph_biomass")
 	check(game.diagram.view_mode == "history", "Measurement tab opens the full graph")
 	await capture("20-testbed-history.png")

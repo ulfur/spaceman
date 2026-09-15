@@ -129,16 +129,42 @@ static func status(parent: Node) -> Label:
 	parent.add_child(node)
 	return node
 
-static func menu(owner: Control, header_row: HBoxContainer, entries: Array) -> PopupPanel:
-	var popup := PopupPanel.new()
-	popup.name = "ExpeditionMenu"
-	owner.add_child(popup)
-	var items := column(popup, 4)
-	items.custom_minimum_size.x = 248
-	for entry in entries:
-		items.add_child(button(entry[0], func(): popup.hide(); entry[1].call(), entry[2]))
-	header_row.add_child(button("Menu", func(): popup.popup_centered(), "Menu"))
-	return popup
+static func menu(owner: Control, header_row: HBoxContainer, entries: Array) -> Control:
+	var layer := Control.new()
+	layer.name = "ExpeditionMenu"
+	owner.add_child(layer)
+	layer.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	layer.mouse_filter = Control.MOUSE_FILTER_STOP
+	layer.hide()
+	var shade := ColorRect.new()
+	layer.add_child(shade)
+	shade.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	shade.color = Color(0, 0, 0, 0.25)
+	shade.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	var panel := PanelContainer.new()
+	mount(layer, Control.PRESET_TOP_RIGHT, Vector4(-300, 76, -24, 100 + entries.size() * 50)).add_child(panel)
+	var items := column(panel, 4)
+	for entry in entries: items.add_child(button(entry[0], _menu_action.bind(layer, entry[1]), entry[2]))
+	layer.gui_input.connect(func(event: InputEvent):
+		if event is InputEventMouseButton and event.pressed: layer.hide()
+	)
+	header_row.add_child(button("Menu", func():
+		owner.move_child(layer, -1)
+		layer.visible = not layer.visible
+	, "Menu"))
+	return layer
+
+static func _menu_action(layer: Control, callback: Callable) -> void:
+	layer.hide()
+	callback.call()
+
+static func menu_key(owner: Control, event: InputEvent) -> bool:
+	var layer: Control = owner.get_node_or_null("ExpeditionMenu")
+	if layer == null or not layer.visible: return false
+	if event is InputEventKey and event.pressed and event.keycode == KEY_ESCAPE:
+		layer.hide()
+		owner.get_viewport().set_input_as_handled()
+	return true
 
 static func text_dialog(owner: Control, title: String, contents: String) -> void:
 	var dialog := AcceptDialog.new()

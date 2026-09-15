@@ -39,25 +39,7 @@ func _ready() -> void:
 	build_interface()
 	refresh()
 
-func label(value: String, font_size: int = 14, color: Color = INK, wrap: bool = false) -> Label:
-	var node := Label.new()
-	node.text = value
-	node.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	node.add_theme_font_size_override("font_size", font_size)
-	node.add_theme_color_override("font_color", color)
-	if wrap: node.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	return node
 
-func skin(color: Color, border: Color) -> StyleBoxFlat:
-	var box := StyleBoxFlat.new()
-	box.bg_color = color
-	box.border_color = border
-	box.border_width_bottom = 2
-	box.content_margin_left = 9
-	box.content_margin_right = 9
-	box.content_margin_top = 9
-	box.content_margin_bottom = 9
-	return box
 
 func button(value: String, callback: Callable, id: String) -> Button:
 	var node := UI.button(value, callback, id)
@@ -65,34 +47,9 @@ func button(value: String, callback: Callable, id: String) -> Button:
 	buttons[id] = node
 	return node
 
-func area(preset: int, offsets: Vector4) -> MarginContainer:
-	var container := MarginContainer.new()
-	container.set_anchors_and_offsets_preset(preset)
-	container.offset_left = offsets.x
-	container.offset_top = offsets.y
-	container.offset_right = offsets.z
-	container.offset_bottom = offsets.w
-	add_child(container)
-	return container
 
-func stack(parent: Node) -> VBoxContainer:
-	var container := VBoxContainer.new()
-	container.add_theme_constant_override("separation", 10)
-	container.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	parent.add_child(container)
-	return container
 
-func scrolled(parent: Node) -> VBoxContainer:
-	var scroll := ScrollContainer.new()
-	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
-	parent.add_child(scroll)
-	return stack(scroll)
 
-func row(parent: Node) -> HBoxContainer:
-	var container := HBoxContainer.new()
-	container.add_theme_constant_override("separation", 4)
-	parent.add_child(container)
-	return container
 
 func build_interface() -> void:
 	UI.install(self)
@@ -109,7 +66,7 @@ func build_interface() -> void:
 	UI.spacer(nav)
 	nav.add_child(UI.label(session.expedition.state.bodies[session.surface_body].name, 16))
 	var menu := UI.menu(self, nav, [["Save expedition", save, "SaveTrial"], ["Trial controls & model", show_help, "Help"]])
-	menu.about_to_popup.connect(set_speed.bind(0))
+	menu.visibility_changed.connect(set_speed.bind(0))
 	inventory = UI.label("", 15, MUTED)
 	UI.mount(self, Control.PRESET_TOP_WIDE, Vector4(28, 87, -28, 120)).add_child(inventory)
 	var scene := UI.column(UI.mount(self, Control.PRESET_FULL_RECT, Vector4(34, 143, -416, -114)), 16)
@@ -344,6 +301,7 @@ func _process(delta: float) -> void:
 		save()
 
 func _input(event: InputEvent) -> void:
+	if UI.menu_key(self, event): return
 	if not event is InputEventKey or not event.pressed or event.echo: return
 	if event.keycode not in [KEY_ESCAPE, KEY_SPACE, KEY_F11]: return
 	match event.keycode:

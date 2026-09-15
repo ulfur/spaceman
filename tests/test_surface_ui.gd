@@ -111,7 +111,7 @@ func run() -> void:
 	root.size = Vector2i(1100, 760)
 	await capture("07-surface-compact.png")
 	check(game.get_global_rect().encloses(game.find_child("Toolbelt", true, false).get_global_rect()), "Toolbelt fits compact window")
-	var unchanged := game.session.save_json()
+	var unchanged: String = game.session.save_json()
 	check(await Driver.click(self, game, "BuildPalette"), "Palette can reopen")
 	Driver.key(root, KEY_ESCAPE)
 	check(not game.build_open and game.tool == "inspect" and game.selected.x < 0, "Escape cancels context before leaving surface")

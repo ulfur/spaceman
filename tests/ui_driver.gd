@@ -15,7 +15,9 @@ static func click(tree: SceneTree, game: Control, id: String) -> bool:
 	return true
 
 static func point(window: Window, position: Vector2) -> void:
-	window.notify_mouse_entered()
+	if not window.has_meta("driver_pointer_entered"):
+		window.notify_mouse_entered()
+		window.set_meta("driver_pointer_entered", true)
 	var motion := InputEventMouseMotion.new()
 	motion.position = position
 	motion.global_position = position

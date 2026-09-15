@@ -36,32 +36,11 @@ func _ready() -> void:
 	selected = session.default_body()
 	refresh()
 
-func box(color: Color, border: Color = Color("293f4b")) -> StyleBoxFlat:
-	var style := StyleBoxFlat.new()
-	style.bg_color = color
-	style.border_color = border
-	style.set_border_width_all(1)
-	style.set_corner_radius_all(5)
-	style.content_margin_left = 14
-	style.content_margin_right = 14
-	style.content_margin_top = 10
-	style.content_margin_bottom = 10
-	return style
 
 func build_theme() -> void:
 	UI.install(self)
 
-func label_node(text: String, font_size: int = 16, color: Color = INK) -> Label:
-	var node := Label.new()
-	node.text = text
-	node.add_theme_font_size_override("font_size", font_size)
-	node.add_theme_color_override("font_color", color)
-	return node
 
-func wrapped(text: String, font_size: int = 15, color: Color = MUTED) -> Label:
-	var node := label_node(text, font_size, color)
-	node.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	return node
 
 func button(text: String, callback: Callable, node_name: String = "") -> Button:
 	return UI.button(text, callback, node_name)
@@ -264,6 +243,7 @@ func open_surface() -> void:
 	get_tree().change_scene_to_file("res://scenes/surface.tscn")
 
 func _unhandled_key_input(event: InputEvent) -> void:
+	if UI.menu_key(self, event): return
 	if event is InputEventKey and event.pressed and not event.echo and event.keycode == KEY_F11:
 		var fullscreen := DisplayServer.window_get_mode() == DisplayServer.WINDOW_MODE_FULLSCREEN
 		DisplayServer.window_set_mode(DisplayServer.WINDOW_MODE_WINDOWED if fullscreen else DisplayServer.WINDOW_MODE_FULLSCREEN)

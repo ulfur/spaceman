@@ -51,41 +51,11 @@ func _ready() -> void:
 	refresh()
 	set_tool(tool)
 
-func label(text: String, font_size: int = 15, color: Color = INK) -> Label:
-	var node := Label.new()
-	node.text = text
-	node.add_theme_font_size_override("font_size", font_size)
-	node.add_theme_color_override("font_color", color)
-	node.add_theme_color_override("font_shadow_color", Color(0, 0, 0, 0.45))
-	node.add_theme_constant_override("shadow_offset_x", 0)
-	node.add_theme_constant_override("shadow_offset_y", 1)
-	node.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	return node
 
-func skin(background: Color, accent: Color) -> StyleBoxFlat:
-	var style := StyleBoxFlat.new()
-	style.bg_color = background
-	style.border_color = accent
-	style.border_width_bottom = 2
-	style.content_margin_left = 12
-	style.content_margin_right = 12
-	style.content_margin_top = 9
-	style.content_margin_bottom = 9
-	return style
 
 func button(text: String, callback: Callable, node_name: String) -> Button:
 	return UI.button(text, callback, node_name)
 
-func margin_box(preset: int, offsets: Vector4) -> MarginContainer:
-	var node := MarginContainer.new()
-	node.set_anchors_and_offsets_preset(preset)
-	node.offset_left = offsets.x
-	node.offset_top = offsets.y
-	node.offset_right = offsets.z
-	node.offset_bottom = offsets.w
-	node.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	add_child(node)
-	return node
 
 func build_interface() -> void:
 	viewport_container = SubViewportContainer.new()
@@ -117,7 +87,7 @@ func build_interface() -> void:
 	UI.spacer(nav)
 	nav.add_child(UI.label(session.expedition.state.bodies[session.surface_body].name + " · Sector 01", 16))
 	var menu := UI.menu(self, nav, [["Save expedition", save_game, "SaveSurface"], ["Surface controls", show_help, "Help"]])
-	menu.about_to_popup.connect(set_speed.bind(0))
+	menu.visibility_changed.connect(set_speed.bind(0))
 	var supplies := UI.row(UI.mount(self, Control.PRESET_TOP_WIDE, Vector4(28, 86, -28, 121)))
 	inventory = UI.label("", 16)
 	supplies.add_child(inventory)
@@ -358,6 +328,7 @@ func _process(delta: float) -> void:
 		autosave()
 
 func _input(event: InputEvent) -> void:
+	if UI.menu_key(self, event): return
 	if not event is InputEventKey or not event.pressed or event.echo:
 		return
 	if event.keycode not in [KEY_B, KEY_SPACE, KEY_Q, KEY_E, KEY_ESCAPE, KEY_F11] and not (event.keycode >= KEY_0 and event.keycode <= KEY_9): return

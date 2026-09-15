@@ -46,30 +46,10 @@ func label(text: String, font_size: int = 15, color: Color = INK) -> Label:
 	node.add_theme_color_override("font_color", color)
 	return node
 
-func skin(background: Color, border: Color) -> StyleBoxFlat:
-	var style := StyleBoxFlat.new()
-	style.bg_color = background
-	style.border_color = border
-	style.border_width_bottom = 2
-	style.content_margin_left = 12
-	style.content_margin_right = 12
-	style.content_margin_top = 10
-	style.content_margin_bottom = 10
-	return style
 
 func button(text: String, callback: Callable, node_name: String) -> Button:
 	return UI.button(text, callback, node_name)
 
-func area(preset: int, offsets: Vector4) -> MarginContainer:
-	var node := MarginContainer.new()
-	node.set_anchors_and_offsets_preset(preset)
-	node.offset_left = offsets.x
-	node.offset_top = offsets.y
-	node.offset_right = offsets.z
-	node.offset_bottom = offsets.w
-	node.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	add_child(node)
-	return node
 
 func stack(parent: Node) -> VBoxContainer:
 	var node := VBoxContainer.new()
@@ -78,10 +58,6 @@ func stack(parent: Node) -> VBoxContainer:
 	parent.add_child(node)
 	return node
 
-func wrapped(text: String, font_size: int = 14, color: Color = INK) -> Label:
-	var node := label(text, font_size, color)
-	node.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	return node
 
 func build_interface() -> void:
 	UI.install(self)
@@ -309,6 +285,7 @@ func new_expedition() -> void:
 	refresh()
 
 func _unhandled_key_input(event: InputEvent) -> void:
+	if UI.menu_key(self, event): return
 	if not event is InputEventKey or not event.pressed or event.echo:
 		return
 	if event.keycode == KEY_ESCAPE:
