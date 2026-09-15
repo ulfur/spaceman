@@ -6,7 +6,11 @@ He is a braincast of the original commander: a digital mind adapted to life as a
 
 **First Rain** is the first playable expedition. Leave a factory on a frozen world. Travel to another star. Come home to the consequences.
 
+**First Foothold** adds a real 3D industrial sector: survey terrain, land a module, extract ore and ice, build power/refining/fabrication, and maintain an enclosed pioneer refuge. It shares the expedition clock and save, while the orbital model remains deliberately simple.
+
 The broader goal spans a galactic map, star systems, planetary engineering, RTS-style surface industry, and eventually first-person robot embodiment. See [Game direction](docs/vision.md) for that vision and the distinction between current features and future work.
+
+The updated concept is an open-ended expedition simulation: observe distant systems, choose where to travel, develop an industrial plan, and discover the consequences. [Science and simulation](docs/science-and-simulation.md) records scientific constraints and speculative engineering; [Visual direction](docs/visual-direction.md) translates the concept-art direction into runtime goals. The [development roadmap](docs/roadmap.md) sets the order and acceptance tests for playable milestones.
 
 ## Play
 
@@ -16,7 +20,13 @@ Open `project.godot` in **Godot 4.5 standard** and press **F6 on `main.tscn`**, 
 godot --path .
 ```
 
-The game starts paused. Use **+1 / +10 / +50 yr** to advance local operations. **F11** toggles fullscreen. Saves are automatic after successful commands and time advances; manual save/load and a confirmed reset are also available. Saves live in Godot's application data directory as `expedition.json`.
+The game starts paused. In orbit, use **+1 / +10 / +50 yr** to advance time. **F11** toggles fullscreen. Saves live in Godot's application data directory as `expedition.json`; old expedition saves migrate to the combined format.
+
+### Try the new surface prototype
+
+**Survey Eir III → Surface operations / 3D**, before deploying the legacy orbital-policy factory. If your existing save already has one there, reclaim it first. Land the module near ore and ice, then use the bottom toolbelt to build. **Space** pauses; **1× / 10× / 50×** set simulated hours per second. **Middle-drag** pans, **wheel** zooms and **Q/E** rotate. **Escape** returns to orbit, paused. See [surface controls and model boundaries](docs/surface-prototype.md).
+
+A useful first production chain is solar → ore extractor + ice well → refinery → fabricator → refuge. Add enough solar capacity and inspect machine status when something stalls. Deposits and life-support supplies are finite: a refuge is not automatically sustainable forever. Module recovery and surface freight are not yet implemented in this slice.
 
 ### Your first expedition
 
@@ -47,7 +57,9 @@ Local verification:
 ```sh
 godot --headless --path . --editor --import
 godot --headless --path . --script res://tests/test_simulation.gd
+godot --headless --path . --script res://tests/test_surface.gd
 godot --path . --script res://tests/test_ui.gd -- --smoke
+godot --path . --script res://tests/test_surface_ui.gd -- --smoke
 ```
 
 The last command needs a display and writes screenshots to ignored `build/`. On a Linux CI machine, prefix it with `xvfb-run -a`. Smoke mode bypasses player saves.
@@ -58,7 +70,11 @@ The last command needs a display and writes screenshots to ignored `build/`. On 
 | --- | --- |
 | `scripts/simulation.gd` | State, commands, annual evolution, observations, saves |
 | `data/expedition.json` | Authored systems, starting resources, route parameters |
-| `scripts/main.gd` | Command interface and save-file I/O |
+| `scripts/main.gd` | Orbital command interface |
+| `scripts/session.gd` | Shared time, module allocation, combined saves and migration |
+| `scripts/surface_simulation.gd` | Surface resources, construction, power, service graph and refuge |
+| `scripts/surface.gd`, `scripts/surface_world.gd` | Spatial controls/HUD and procedural 3D rendering |
+| `data/surface.json` | Surface kit inventories and construction recipes |
 | `scripts/space_view.gd` | Star chart and procedural viewport |
 | `shaders/planet.gdshader` | Rotating globe; ice, water, clouds, and life reflect state |
 | `tests/` | Simulation invariants and rendered expedition walkthrough |
@@ -68,6 +84,6 @@ The last command needs a display and writes screenshots to ignored `build/`. On 
 
 This is an early gameplay prototype. It includes two authored systems, three bodies, warming and mining factories, recovery and replacement, repairs, lifeseeding, stale remote observations, event history, and versioned saves.
 
-Climate and industrial quantities are deliberately simplified and tuned for an expedition lasting a few centuries. This is not a physical climate or propulsion solver. The globe is a procedural shader, not a navigable surface. Walking robots, a procedural galaxy, autonomous branching policies, detailed ship construction, upgrades, sound, and multiplayer are future work.
+Climate and industrial quantities are deliberately simplified. This is not a physical climate or propulsion solver. The globe is a procedural shader; the new 3D sector is a bounded region, not a full traversable planet. Its rovers illustrate activity rather than performing physical pathfinding. Walking robots, a procedural galaxy, star-driven radiation, autonomous branching policies, detailed ship construction, upgrades, sound, and multiplayer are future work.
 
 There is no automatic website deployment and no third-party telemetry.

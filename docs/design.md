@@ -1,6 +1,6 @@
 # First Rain — design and implementation notes
 
-For the broader intended game and the direction established after playtesting, see [Game direction](vision.md). The implementation notes below describe the current prototype; future surface industry, richer habitability, and continuous time are not yet implemented.
+For the broader intended game and the direction established after playtesting, see [Game direction](vision.md) and the [roadmap](roadmap.md). The notes below describe the original orbital prototype. The new spatial industry, shared timeline and save wrapper are documented separately in [First Foothold](surface-prototype.md). Rich planetary habitability remains future work.
 
 ## The premise
 

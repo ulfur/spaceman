@@ -1,6 +1,7 @@
 extends Control
 
 const Simulation = preload("res://scripts/simulation.gd")
+const Session = preload("res://scripts/session.gd")
 const SpaceView = preload("res://scripts/space_view.gd")
 const SAVE_PATH := "user://expedition.json"
 const INK := Color("d5e1e6")
@@ -8,7 +9,8 @@ const MUTED := Color("829ba8")
 const TEAL := Color("91d6cc")
 const GOLD := Color("e5bd85")
 
-var sim = Simulation.new()
+var session = Session.get_shared()
+var sim = session.expedition
 var selected := "eir_iii"
 var chart := false
 var status: Label
@@ -31,10 +33,10 @@ func _ready() -> void:
 	build_theme()
 	build_interface()
 	# Smoke tests start from a known state without touching a player's save.
-	if not "--smoke" in OS.get_cmdline_user_args() and FileAccess.file_exists(SAVE_PATH):
-		var loaded: Dictionary = sim.restore_json(FileAccess.get_file_as_string(SAVE_PATH))
+	if not session.initialized:
+		var loaded: Dictionary = session.load_disk()
 		status.text = loaded.message
-		selected = "eir_iii" if sim.state.system == "eir" else "vesper_b"
+	selected = "eir_iii" if sim.state.system == "eir" else "vesper_b"
 	refresh()
 
 func box(color: Color, border: Color = Color("293f4b")) -> StyleBoxFlat:
@@ -186,7 +188,7 @@ func build_interface() -> void:
 	reset_dialog = ConfirmationDialog.new()
 	reset_dialog.title = "Start another expedition?"
 	reset_dialog.dialog_text = "This replaces your current expedition and its autosave."
-	reset_dialog.confirmed.connect(func(): sim.reset(); selected = "eir_iii"; chart = false; refresh(); autosave())
+	reset_dialog.confirmed.connect(func(): session.reset(); selected = "eir_iii"; chart = false; refresh(); autosave())
 	add_child(reset_dialog)
 	milestone_dialog = AcceptDialog.new()
 	milestone_dialog.title = "FIRST RAIN"
@@ -204,6 +206,8 @@ func refresh() -> void:
 	year_label.text = "YEAR %d" % state.year
 	resources.text = "FUEL  %.1f     /     PROPELLANT  %.1f     /     ALLOY  %.1f     /     INTEGRITY  %.0f%%     /     FACTORIES ABOARD  %d     /     SEEDS  %d" % [ship.fuel, ship.propellant, ship.alloy, ship.integrity, ship.modules, ship.seeds]
 	objective_label.text = sim.objective()
+	if session.sites.has("eir_iii") and session.sites.eir_iii.state.landed:
+		objective_label.text = "FIRST FOOTHOLD  /  Your Eir III installation persists. Manage its production locally, or leave and return to the consequences."
 	clear_children(body_list)
 	for definition in sim.scenario.bodies:
 		if definition.system != state.system:
@@ -226,6 +230,8 @@ func refresh() -> void:
 			if body.kind == "world" and body.temperature > 303.0:
 				subtitle.text = "A world pushed beyond the seed archive's tolerances. The heat is hostile to pioneer life."
 			telemetry.text = "%.1f K   /   %.0f%% SURFACE WATER   /   %.1f%% BIOSPHERE\n%s  ·  %.1f accessible feedstock" % [body.temperature, body.water * 100.0, body.biomass * 100.0, "NO SURFACE INDUSTRY" if body.factory == "" else body.factory.to_upper() + " FACTORY", body.deposit]
+			if session.site_available(selected) and session.sites.has(selected) and session.sites[selected].state.landed:
+				telemetry.text = "%.1f K   /   SPATIAL INDUSTRY ACTIVE\n%d installations · protected local culture, not planetary terraforming" % [body.temperature, session.sites[selected].state.structures.size()]
 		else:
 			telemetry.text = "Unresolved composition.\nDeploy a survey probe before making plans."
 	view.show_body(body, chart, state.system)
@@ -251,12 +257,19 @@ func refresh_operations(body: Dictionary) -> void:
 	operations.add_child(label_node("COMMAND AUTHORITY", 12, TEAL))
 	if not chart and not body.is_empty():
 		operations.add_child(label_node(body.name, 23))
+		if session.site_available(selected):
+			operations.add_child(button("Surface operations  /  3D →", open_surface, "Surface"))
+			operations.add_child(wrapped("FIRST FOOTHOLD: survey, build and maintain a real surface installation.", 13, TEAL))
 		if not body.surveyed:
 			operations.add_child(wrapped("Characterise resources, climate, and the possibility of a living future."))
 			action_button("Survey body", "survey")
 		elif body.factory == "":
-			operations.add_child(wrapped("Factory modules carry their own power and automation. They remain here until reclaimed."))
-			action_button("Land factory module", "deploy", sim.state.ship.modules < 1, "Requires one module aboard Spaceship.")
+			var has_surface: bool = session.sites.has(selected) and session.sites[selected].state.landed
+			if has_surface:
+				operations.add_child(wrapped("A module is committed to the surface sector. Its work continues during orbital time advances and travel. Surface recovery and freight are not yet implemented.", 14))
+			else:
+				operations.add_child(wrapped("Factory modules carry their own power and automation. Legacy orbital factories remain here until reclaimed."))
+				action_button("Land orbital-policy factory", "deploy", sim.state.ship.modules < 1, "Legacy climate/mining abstraction. Use Surface operations for spatial industry.")
 		else:
 			operations.add_child(wrapped("Autonomous industry active. Work continues until local feedstock runs out."))
 			if body.factory == "warming":
@@ -302,7 +315,7 @@ func refresh_operations(body: Dictionary) -> void:
 
 func act(action: String, value: float = 288.0) -> void:
 	var was_complete: bool = sim.state.first_rain
-	var outcome: Dictionary = sim.command(action, selected, value)
+	var outcome: Dictionary = session.command(action, selected, value)
 	status.text = outcome.message
 	if outcome.ok:
 		if action == "travel":
@@ -314,7 +327,7 @@ func act(action: String, value: float = 288.0) -> void:
 			milestone_dialog.popup_centered(Vector2i(510, 240))
 
 func advance_time(years: int) -> void:
-	sim.advance(years)
+	session.advance_years(years)
 	status.text = "%d years elapsed. Local observations updated." % years
 	refresh()
 	autosave()
@@ -324,6 +337,8 @@ func request_travel() -> void:
 	for body in sim.state.bodies.values():
 		if body.system == sim.state.system and body.factory != "":
 			abandoned.append(body.name + " (" + body.factory + ")")
+		if body.system == sim.state.system and session.sites.has(body.id) and session.sites[body.id].state.landed:
+			abandoned.append(body.name + " (surface installation; finite stores)")
 	travel_dialog.dialog_text = "%d years will pass.\nCost: 18 reactor fuel, 65 propellant, 8 integrity.\n\nFactories left working: %s\n\nReturn travel has the same cost. Supplies are collected locally." % [sim.travel_quote().years, ", ".join(abandoned) if not abandoned.is_empty() else "none"]
 	travel_dialog.popup_centered(Vector2i(590, 250))
 
@@ -335,29 +350,25 @@ func save_game() -> void:
 	write_save(true)
 
 func write_save(announce: bool) -> void:
-	var file := FileAccess.open(SAVE_PATH + ".tmp", FileAccess.WRITE)
-	if file == null:
-		status.text = "Save failed: cannot open storage."
-		return
-	file.store_string(sim.save_json())
-	file.flush()
-	var error := file.get_error()
-	file.close()
-	if error != OK or DirAccess.rename_absolute(SAVE_PATH + ".tmp", SAVE_PATH) != OK:
-		status.text = "Save failed: current save retained."
-		return
-	if announce:
-		status.text = "Expedition saved."
+	var outcome: Dictionary = session.save_disk()
+	if announce or not outcome.ok:
+		status.text = outcome.message
 
 func load_game() -> void:
 	if not FileAccess.file_exists(SAVE_PATH):
 		status.text = "No saved expedition yet."
 		return
-	var outcome: Dictionary = sim.restore_json(FileAccess.get_file_as_string(SAVE_PATH))
+	var outcome: Dictionary = session.restore_json(FileAccess.get_file_as_string(SAVE_PATH))
 	status.text = outcome.message
 	if outcome.ok:
 		selected = "eir_iii" if sim.state.system == "eir" else "vesper_b"
 		refresh()
+
+func open_surface() -> void:
+	if not session.site_available(selected):
+		return
+	session.surface_body = selected
+	get_tree().change_scene_to_file("res://scenes/surface.tscn")
 
 func _unhandled_key_input(event: InputEvent) -> void:
 	if event is InputEventKey and event.pressed and not event.echo and event.keycode == KEY_F11:
