@@ -8,7 +8,7 @@ Open **System**, select Eir III and **Approach orbit**. Use **Moons** to pull ba
 
 Survey the planet and choose a landing site. The geographic grid appears on the same sphere, with the same camera and terminator. Click a location or drag to inspect the other hemisphere. **Locate site** brings the selected coordinates into view. Existing site markers return to the same saved industry. The subsequent ground handoff still opens an isolated 80 m site; it is not a continuous atmospheric descent.
 
-In orbit, **+6 h** makes rotation and illumination easy to inspect. This advances the whole expedition, including unattended industry. Pausing stops physical rotation. Moving the camera does not advance time, move Spaceship, or consume fuel.
+In orbit, **+6 h** makes rotation and illumination easy to inspect. This advances the whole expedition, including unattended industry. The camera follows its subject when time advances; **Day side** moves the camera to a sunlit perspective without altering the lighting. Pausing stops physical rotation. Moving the camera does not advance time, move Spaceship, or consume fuel.
 
 ## Full screen
 

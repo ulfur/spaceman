@@ -158,13 +158,16 @@ func body_view(id: String, regional: bool = false) -> void:
 	var system: String = session.expedition.state.bodies[id].system
 	prepare(system)
 	var retain := selected == id and mode in ["orbit", "regions"]
-	selected = id; mode = "regions" if regional else "orbit"; tracking = id
+	selected = id; mode = "regions" if regional else "orbit"
 	if retain:
 		render_frame()
 		return
+	tracking = id
+	fly(positions[id], radii[id] * 3.3, day_direction(id))
+
+func day_direction(id: String) -> Vector3:
 	var sun := Mechanics.sun_direction(session, id, session.elapsed_hours())
-	var inspection := (sun + Vector3(0, 0.30, 0)).normalized().rotated(Vector3.UP, 0.48)
-	fly(positions[id], radii[id] * 3.3, inspection)
+	return (sun + Vector3(0, 0.30, 0)).normalized().rotated(Vector3.UP, 0.48)
 
 func chart_view(center: Vector2, pixels_per_ly: float, first: bool = false) -> void:
 	prepare(session.viewed_system if session.viewed_system != "" else session.expedition.state.system)
@@ -192,12 +195,14 @@ func fly(at: Array, radius: float, toward: Vector3) -> void:
 	var start := focus.duplicate()
 	var start_radius := distance
 	var start_direction := direction
+	var tracked := tracking
 	var duration := clampf(absf(log(radius / distance)) * 0.17 + 0.45, 0.55, 2.4)
 	camera_tween = create_tween()
 	camera_tween.tween_method(func(progress: float):
 		var eased := smoothstep(0.0, 1.0, progress)
 		# Finish lateral motion before the final approach; no crossfade or raster zoom.
-		focus = Mechanics.mix_position(start, at, 1.0 - pow(1.0 - eased, 4.0))
+		var destination: Array = positions[tracked] if tracked != "" and positions.has(tracked) else at
+		focus = Mechanics.mix_position(start, destination, 1.0 - pow(1.0 - eased, 4.0))
 		distance = exp(lerpf(log(start_radius), log(radius), eased))
 		direction = start_direction.slerp(toward, eased).normalized()
 		render_frame()
@@ -210,7 +215,9 @@ func _process(_delta: float) -> void:
 	if not active: return
 	if last_hours != session.elapsed_hours():
 		update_ephemeris()
-		if tracking != "" and not moving() and positions.has(tracking): focus = positions[tracking].duplicate()
+	# HUD refreshes can update the ephemeris before this process callback. Follow
+	# the tracked body every frame, including after discrete year advances.
+	if tracking != "" and not moving() and positions.has(tracking): focus = positions[tracking].duplicate()
 	render_frame()
 
 func normalized_position(at: Array) -> Vector3:

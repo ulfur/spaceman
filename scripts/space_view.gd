@@ -16,10 +16,15 @@ func show_body(body: Dictionary) -> void:
 	else: universe.update_ephemeris(); universe.render_frame()
 
 func frame_body() -> void:
+	universe.tracking = body_id
 	universe.fly(universe.positions[body_id], universe.radii[body_id] * 3.3, universe.direction)
 
 func frame_family() -> void:
 	universe.family_view(body_id)
+
+func day_side() -> void:
+	universe.tracking = body_id
+	universe.fly(universe.positions[body_id], universe.radii[body_id] * 3.3, universe.day_direction(body_id))
 
 func _gui_input(event: InputEvent) -> void:
 	if event is InputEventMouseMotion and event.button_mask & (MOUSE_BUTTON_MASK_MIDDLE | MOUSE_BUTTON_MASK_RIGHT | MOUSE_BUTTON_MASK_LEFT):

@@ -72,6 +72,12 @@ func run() -> void:
 	await press("Action_seed")
 	await press("Wait50")
 	check(game.sim.state.bodies.eir_iii.biomass > 0.5, "Pioneer culture still grows")
+	await process_frame
+	var universe := root.get_node("Universe")
+	check(universe.project_body("eir_iii").distance_to(universe.frame.get_center()) < 1.0, "Inspection camera follows the planet after a discrete fifty-year advance")
+	check(universe.meshes.eir_iii.visible, "Planet remains rendered after its orbit advances")
+	await press("DaySide")
+	while universe.moving(): await process_frame
 	await capture("03-first-rain.png")
 	check("ocean world" in game.subtitle.text, "Description reflects the changed world")
 	root.size = Vector2i(1100, 760)

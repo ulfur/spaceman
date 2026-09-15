@@ -63,6 +63,15 @@ func run() -> void:
 	await capture("31-planet-and-moon.png")
 	await click("FramePlanet")
 	while universe.moving(): await process_frame
+	await click("Select_nacre")
+	while universe.moving(): await process_frame
+	await click("FrameMoons")
+	while universe.moving(): await process_frame
+	await click("FramePlanet")
+	while universe.moving(): await process_frame
+	check(universe.project_body("nacre").distance_to(universe.frame.get_center()) < 1.0, "Returning from a lunar family tracks the selected moon, not its parent")
+	await click("Select_eir_iii")
+	while universe.moving(): await process_frame
 	await click("Action_survey")
 	var pose: Transform3D = universe.meshes.eir_iii.transform
 	var camera_pose: Vector3 = universe.direction

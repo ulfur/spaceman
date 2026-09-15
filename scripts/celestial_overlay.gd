@@ -58,10 +58,13 @@ func _draw() -> void:
 			draw_string(font, point + offset, title, HORIZONTAL_ALIGNMENT_LEFT, -1, 14, color)
 			if id == universe.selected: draw_arc(point, maxf(radius + 8.0, 10.0), 0, TAU, 48, Color("eaca92"), 1, true)
 	var ruler := frame.position + Vector2(14, frame.size.y - 26)
+	if universe.mode == "orbit": ruler = frame.position + Vector2(frame.size.x - 180, 14)
 	var width_au: float = universe.distance * 2.0 * tan(deg_to_rad(universe.camera.fov * 0.5)) * 100.0 / frame.size.y
 	draw_line(ruler, ruler + Vector2(100, 0), Color("8ca4ab"), 1, true)
 	for x in [0.0, 100.0]: draw_line(ruler + Vector2(x, -3), ruler + Vector2(x, 3), Color("8ca4ab"), 1, true)
 	draw_string(font, ruler + Vector2(0, 18), Mechanics.distance_text(width_au) + " at focus", HORIZONTAL_ALIGNMENT_LEFT, -1, 11, Color("8ca4ab"))
 	var range_text := "CAMERA RANGE  " + Mechanics.distance_text(universe.distance)
 	var w := font.get_string_size(range_text, HORIZONTAL_ALIGNMENT_LEFT, -1, 11).x
-	draw_string(font, frame.end - Vector2(w + 12, 8), range_text, HORIZONTAL_ALIGNMENT_LEFT, -1, 11, Color("8ca4ab"))
+	var range_at := frame.end - Vector2(w + 12, 8)
+	if universe.mode == "orbit": range_at = Vector2(frame.end.x - w - 12, frame.position.y + 48)
+	draw_string(font, range_at, range_text, HORIZONTAL_ALIGNMENT_LEFT, -1, 11, Color("8ca4ab"))
