@@ -9,6 +9,7 @@ func _ready() -> void:
 func refresh_buttons() -> void:
 	for control in get_tree().get_nodes_in_group("FullscreenButtons"):
 		control.text = "Windowed" if fullscreen() else "Full screen"
+		control.disabled = changing
 
 static func shared(owner: Node) -> Node:
 	return owner.get_tree().root.get_node("DisplayControls")
@@ -42,8 +43,14 @@ func toggle() -> void:
 		window.mode = Window.MODE_FULLSCREEN
 	else:
 		window.mode = previous_mode if previous_mode == Window.MODE_MAXIMIZED else Window.MODE_WINDOWED
-	# Cocoa's transition is asynchronous; read the resulting native mode.
-	await get_tree().create_timer(0.8).timeout
+	refresh_buttons()
+	# Cocoa can take longer than a fixed 0.8 s delay. Reporting failure during
+	# a successful transition opens a dialog which then captures keyboard input.
+	# Wait for the requested native state before restoring the controls.
+	var deadline := Time.get_ticks_msec() + 6000
+	await get_tree().process_frame
+	while fullscreen() != entering and Time.get_ticks_msec() < deadline:
+		await get_tree().process_frame
 	changing = false
 	refresh_buttons()
 	if fullscreen() != entering and DisplayServer.get_name() != "headless":
@@ -51,6 +58,7 @@ func toggle() -> void:
 
 func explain(message: String) -> void:
 	var dialog := AcceptDialog.new()
+	dialog.name = "FullscreenExplanation"
 	dialog.title = "Full screen"
 	dialog.dialog_text = message
 	dialog.dialog_autowrap = true

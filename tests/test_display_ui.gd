@@ -38,6 +38,9 @@ func run() -> void:
 		check(await Driver.click(self, game, "Fullscreen"), "Visible fullscreen control on " + view)
 		await window_settled(Window.MODE_FULLSCREEN)
 		check(root.mode == Window.MODE_FULLSCREEN, "Native fullscreen accepted on " + view + " (" + OS.get_name() + ")")
+		var explanation: AcceptDialog = root.get_node_or_null("FullscreenExplanation")
+		check(explanation == null or not explanation.visible, "Successful fullscreen must not leave a keyboard-capturing error dialog")
+		if explanation != null and explanation.visible: print("Fullscreen explanation: ", explanation.dialog_text)
 		# Keep a menu open to prove the global shortcut is not eaten by HUD focus.
 		check(await Driver.click(self, game, "Menu"), "Menu available in fullscreen")
 		check(game.get_node("ExpeditionMenu").visible, "Menu actually opened after the native transition")
