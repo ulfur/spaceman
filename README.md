@@ -30,27 +30,27 @@ The game starts paused. In orbit, use **+1 / +10 / +50 yr** to advance time. **F
 
 ### Try the new surface prototype
 
-**Survey Eir III → Choose a landing site**, before deploying the legacy orbital-policy factory. If your existing save already has one there, reclaim it first. Land the module near ore and ice, then open **Build [B]** and choose **Industry** or **Life support**. **Space** pauses; **1× / 10× / 50×** set simulated hours per second. **Middle-drag** pans, **wheel** zooms and **Q/E** rotate. **Escape** dismisses placement or selection first, then returns to orbit, paused. Hold **Shift** for repeated placement. See [surface controls and model boundaries](docs/surface-prototype.md).
+**Survey Eir III → Choose a landing site → click the globe → Reconnoitre this site**, before deploying the legacy orbital-policy factory. If your existing save already has one there, reclaim it first. Land the module near ore and ice, then open **Build [B]** and choose **Industry** or **Life support**. **Space** pauses; **1× / 10× / 50×** set simulated hours per second. **WASD / arrows** or **middle/right drag** pan, **wheel / trackpad** zoom, and **Q/E** rotate. Visible **− / + / Home** controls work while paused. **Planet** returns to geographic selection and retained site markers. **Escape** dismisses placement or selection first, then returns to orbit, paused. Hold **Shift** for repeated placement. See [surface controls and model boundaries](docs/surface-prototype.md).
 
 A useful first production chain is solar → ore extractor + ice well → refinery → fabricator → refuge. Add enough solar capacity and inspect machine status when something stalls. Deposits and life-support supplies are finite: a refuge is not automatically sustainable forever. Module recovery and surface freight are not yet implemented in this slice.
 
 ### Scout another system
 
-Open **Star chart** from the navigation bar. Click a star, run an **Orbit fit**, **Spectrum**, and **Activity watch** as useful, then choose **Review transit**. On arrival, a **Local probe** unlocks that planet's **Choose a landing site** action. The named **orbit** link exposes its industrial companion and the original ship-supply mechanics. Observation consumes time and fuel; a probe also consumes alloy. **Menu → New expedition** can use a chosen neighbourhood seed; that seed and the acquired evidence persist in the expedition save.
+Open **Star chart** from the navigation bar. Click a star, run an **Orbit fit**, **Spectrum**, and **Activity watch** as useful, then choose **Review transit**. On arrival, a **Local probe** unlocks that planet's **Choose a landing site** action. The named **orbit** link opens the system map; select a planet or moon and **Approach orbit** for its local operations. Double-click stars to inspect their system maps. **Galaxy** and **Catalogue this field** resolve additional addressable stellar fields without moving Spaceship. Observation consumes time and fuel; a probe also consumes alloy. **Menu → New expedition** can use a chosen neighbourhood seed; that seed and the acquired evidence persist in the expedition save.
 
 ### Run a field trial
 
 On a probed generated world, land a module, then choose **Build → Life support → Field testbed [9]** and place it on the service network. Select the finished structure and choose **Open field trial**. Use the **Climate**, **Shielding** and **Culture** tabs; let the conditions settle before committing one archive packet. Switch from **Chamber** to **Temperature**, **Pressure** or **Culture** to inspect its history. A UV filter and a regolith canopy have different effects, and an opaque shelter needs another light source.
 
-Testbeds draw actual surface power and service parts. Losing support can kill the culture. This first engineering pilot covers a 16 m² enclosure; regional/global terraforming remains on the roadmap. Saves use version four and migrate all three previous formats.
+Testbeds draw actual surface power and service parts. Losing support can kill the culture. This first engineering pilot covers a 16 m² enclosure; regional/global terraforming remains on the roadmap. Saves use version five and migrate versions one through four.
 
 ### Your first expedition
 
 1. **Survey Eir III**, expand **Orbital industry**, then **Deploy climate factory**. Keep its equilibrium target at **288 K**.
 2. Open **Star chart**, select **Vesper**, then **Review transit → Begin transit**. Confirm the costs and factories being left behind. The journey takes **68 years**.
-3. Enter **Vesper orbit**, **Survey Vesper B** and **Deploy factory module**. Advance **10 years**, then **Collect supplies**. More time means more reserves, until the deposit is exhausted.
+3. Enter **Vesper orbit → Approach orbit** with Vesper B selected, then **Survey Vesper B** and **Deploy factory module**. Advance **10 years**, then **Collect supplies**. More time means more reserves, until the deposit is exhausted.
 4. Return through **Star chart → Eir → Review transit**. Eir III has kept changing during both journeys. This completes **First Rain** if the world has developed enough liquid water.
-5. Enter **Eir orbit** and **Introduce pioneer life**, then advance decades to watch it grow. Continue exploring, recover factories, build replacements, repair Spaceship, or experiment with a different climate target.
+5. Enter **Eir orbit → Approach orbit** with Eir III selected, and **Introduce pioneer life**, then advance decades to watch it grow. Continue exploring, recover factories, build replacements, repair Spaceship, or experiment with a different climate target.
 
 You begin with enough transit reserves for one round trip even without mining. Further journeys require industry. Recovering a warming factory stops its work; the atmosphere subsequently loses its greenhouse effect slowly. Extreme targets can destroy a developing biosphere.
 
@@ -76,13 +76,15 @@ godot --headless --path . --script res://tests/test_simulation.gd
 godot --headless --path . --script res://tests/test_surface.gd
 godot --headless --path . --script res://tests/test_prospects.gd
 godot --headless --path . --script res://tests/test_testbeds.gd
+godot --headless --path . --script res://tests/test_atlas.gd
 godot --path . --script res://tests/test_ui.gd -- --smoke
 godot --path . --script res://tests/test_surface_ui.gd -- --smoke
 godot --path . --script res://tests/test_prospects_ui.gd -- --smoke
 godot --path . --script res://tests/test_testbeds_ui.gd -- --smoke
+godot --path . --fixed-fps 20 --script res://tests/test_navigation_ui.gd -- --smoke
 ```
 
-The last four commands need a display and write screenshots to ignored `build/`. On a Linux CI machine, prefix them with `xvfb-run -a`. Smoke mode bypasses player saves.
+The last five commands need a display and write screenshots to ignored `build/`. On a Linux CI machine, prefix them with `xvfb-run -a`. Smoke mode bypasses player saves.
 
 ## Structure
 
@@ -100,6 +102,10 @@ The last four commands need a display and write screenshots to ignored `build/`.
 | `scripts/observatory.gd`, `scripts/prospect_map.gd` | Distant scouting, route review and destination selection |
 | `scripts/testbed_simulation.gd`, `data/testbeds.json` | Chamber gas, heat, water phases, exposure and archive-culture model |
 | `scripts/testbeds.gd`, `scripts/trial_diagram.gd` | Engineering orders, live schematic and measured history |
+| `scripts/world_atlas.gd`, `data/spatial.json` | Stable world addresses, orbital fits and geographic priors |
+| `scripts/system.gd`, `scripts/system_map.gd` | Planet and moon hierarchy with spatial selection |
+| `scripts/regions.gd`, `scripts/region_globe.gd` | Geographic picking and persistent foothold markers |
+| `scripts/navigation.gd` | Camera transitions between simulation scales |
 | `scripts/space_view.gd` | Procedural planetary viewport |
 | `shaders/planet.gdshader` | Rotating globe; ice, water, clouds, and life reflect state |
 | `tests/` | Simulation invariants and rendered expedition walkthrough |
@@ -107,11 +113,13 @@ The last four commands need a display and write screenshots to ignored `build/`.
 
 ## Scope
 
-This is an early gameplay prototype. It includes two authored systems plus six generated prospects, fifteen bodies, spatial surface industry, distant observing programmes and local probes. The original warming/mining factories, recovery and replacement, repairs, lifeseeding, stale remote observations and event history remain available alongside versioned saves.
+This is an early gameplay prototype. It includes two authored systems plus six initial generated prospects, twenty-four initial bodies, additional stellar fields generated on demand, persistent geographic surface sites, spatial industry, distant observing programmes and local probes. The original warming/mining factories, recovery and replacement, repairs, lifeseeding, stale remote observations and event history remain available alongside versioned saves.
 
-Climate and industrial quantities are deliberately simplified. The physical testbed is a bounded engineering model; global climate, propulsion and radiation dosimetry are not solved. The globe is a procedural shader; each 3D sector is a bounded region, not a full traversable planet. Its rovers illustrate activity rather than performing physical pathfinding. Prospects generates a small neighbourhood, not a full galaxy. Exposed-life viability on generated worlds, walking robots, autonomous branching policies, detailed ship construction, ship upgrades, sound, and multiplayer remain future work.
+Climate and industrial quantities are deliberately simplified. The physical testbed is a bounded engineering model; global climate, propulsion and radiation dosimetry are not solved. The globe is a procedural shader; each 3D sector is a bounded region, not a full traversable planet. Its rovers illustrate activity rather than performing physical pathfinding. The galactic catalogue is generated lazily across a synthetic disc; active industrial sites remain 80 m and planetary terrain between them is not yet streamed. Exposed-life viability on generated worlds, walking robots, autonomous branching policies, detailed ship construction, ship upgrades, sound, and multiplayer remain future work.
 
 There is no automatic website deployment and no third-party telemetry.
 
 
 The **Living worlds** graphics pass adds native procedural planet rendering, stellar navigation feedback, continuous terrain, a detailed industrial asset kit, operating machinery and a 3D field-trial cutaway. See [visual direction](docs/visual-direction.md) for what the graphics represent and which effects are illustrative. Simulation pause also freezes working machinery; orbital inspection and route-planning feedback use presentation time.
+
+The [spatial expedition milestone](docs/spatial-expedition.md) adds system maps, animated scale changes, geographic site selection and lazy galactic catalogue fields. See the [roadmap](docs/roadmap.md) for continuous-world streaming and the broader simulator direction.

@@ -45,6 +45,7 @@ func run() -> void:
 	await process_frame
 	await process_frame
 	game = current_scene
+	await Driver.settle(self)
 	check(game.name == "Observatory", "Orbital navigation enters observatory")
 	await capture("08-prospect-catalogue.png")
 	var chosen := "prospect_1"
@@ -77,18 +78,31 @@ func run() -> void:
 	await process_frame
 	await process_frame
 	game = current_scene
-	check(game.name == "Surface", "Prospect opens actual 3D surface")
+	await Driver.settle(self)
+	check(game.name == "Spaceman", "Chart approaches the observed planet")
+	await click("Surface")
+	await process_frame
+	await process_frame
+	game = current_scene
+	await click("ApproachRegion")
+	await process_frame
+	await process_frame
+	game = current_scene
+	await Driver.settle(self)
+	check(game.name == "Surface", "Selected region opens actual 3D surface")
 	check(game.site.state.has("solar_factor"), "Generated planet affects loaded surface state")
 	await capture("12-prospect-surface.png")
 	await click("ReturnOrbit")
 	await process_frame
 	await process_frame
 	game = current_scene
+	await Driver.settle(self)
 	check(game.sim.state.system == chosen and game.selected == chosen + "_b", "Orbital view stays in generated system")
 	await click("Prospects")
 	await process_frame
 	await process_frame
 	game = current_scene
+	await Driver.settle(self)
 	await click("Menu")
 	await click("NewProspects")
 	check(game.reset_dialog.visible, "New seed requires explicit reset confirmation")

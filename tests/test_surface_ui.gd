@@ -80,7 +80,14 @@ func run() -> void:
 	await process_frame
 	await process_frame
 	game = current_scene
-	check(game.name == "Surface", "Orbital button loads real surface scene")
+	await Driver.settle(self)
+	check(game.name == "Regions", "Orbital button opens geographic site selection")
+	check(await Driver.click(self, game, "ApproachRegion"), "Approach selected region")
+	await process_frame
+	await process_frame
+	game = current_scene
+	await Driver.settle(self)
+	check(game.name == "Surface", "Region approach loads real surface scene")
 	await process_frame
 	var terrain: MeshInstance3D = game.world.get_node("Terrain")
 	var arrays: Array = terrain.mesh.surface_get_arrays(0)
@@ -143,11 +150,18 @@ func run() -> void:
 	await process_frame
 	await process_frame
 	game = current_scene
+	await Driver.settle(self)
 	check(game.name == "Spaceman", "Return button restores orbital scene")
 	click_control(game.find_child("Surface", true, false))
 	await process_frame
 	await process_frame
 	game = current_scene
+	await Driver.settle(self)
+	check(await Driver.click(self, game, "ApproachRegion"), "Revisit selected region")
+	await process_frame
+	await process_frame
+	game = current_scene
+	await Driver.settle(self)
 	check(game.site.state.total_hours == hours_before_return and game.site.state.landed, "Re-entering surface preserves clock and module")
 	print("Surface UI: %d failures" % failures)
 	game.queue_free()

@@ -38,6 +38,7 @@ jobs:
       - name: Import project and check scripts
         run: |
           mkdir -p build
+          touch build/.gdignore
           godot --headless --path . --editor --import 2>&1 | tee build/import.log
           godot --headless --path . --script res://tools/check_scripts.gd 2>&1 | tee -a build/import.log
           if grep -E 'SCRIPT ERROR|Parse Error|ERROR:|FAIL:' build/import.log; then exit 1; fi
@@ -94,6 +95,20 @@ jobs:
         run: |
           xvfb-run -a godot --path . --rendering-method gl_compatibility --audio-driver Dummy --script res://tests/test_testbeds_ui.gd -- --smoke 2>&1 | tee build/testbeds-ui.log
           if grep -E 'SCRIPT ERROR|Parse Error|ERROR:|FAIL:' build/testbeds-ui.log; then exit 1; fi
+      - name: World addresses, regions and migrations
+        if: ${{ !cancelled() }}
+        timeout-minutes: 2
+        run: |
+          godot --headless --path . --script res://tests/test_atlas.gd 2>&1 | tee build/atlas.log
+          if grep -E 'SCRIPT ERROR|Parse Error|ERROR:|FAIL:' build/atlas.log; then exit 1; fi
+      - name: Render spatial navigation and geographic site selection
+        if: ${{ !cancelled() }}
+        timeout-minutes: 3
+        env:
+          LIBGL_ALWAYS_SOFTWARE: "1"
+        run: |
+          xvfb-run -a godot --path . --rendering-method gl_compatibility --audio-driver Dummy --fixed-fps 20 --script res://tests/test_navigation_ui.gd -- --smoke 2>&1 | tee build/navigation-ui.log
+          if grep -E 'SCRIPT ERROR|Parse Error|ERROR:|FAIL:' build/navigation-ui.log; then exit 1; fi
       - name: Preserve visual checks and test logs
         if: always()
         uses: actions/upload-artifact@v4

@@ -1,4 +1,5 @@
 extends Control
+const Nav = preload("res://scripts/navigation.gd")
 const UI = preload("res://scripts/interface.gd")
 const Session = preload("res://scripts/session.gd")
 const Prospects = preload("res://scripts/prospects.gd")
@@ -33,10 +34,14 @@ var seed_input: SpinBox
 func _ready() -> void:
 	if not session.initialized:
 		session.load_disk()
-	if session.prospects.worlds.has(session.expedition.state.system):
+	if session.expedition.has_system(session.viewed_system):
+		selected = session.viewed_system
+	elif session.prospects.worlds.has(session.expedition.state.system):
 		selected = session.expedition.state.system
 	build_interface()
 	refresh()
+	var focus: Vector2 = map.star_position(selected)
+	Nav.arrive(self, map, focus if map.chart_region().has_point(focus) else map.chart_region().get_center())
 
 func label(text: String, font_size: int = 15, color: Color = INK) -> Label:
 	var node := Label.new()
@@ -66,20 +71,25 @@ func build_interface() -> void:
 	map.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	add_child(map)
 	map.selected_system.connect(select_system)
+	map.entered_system.connect(open_system)
+	map.field_requested.connect(catalogue_field)
 	var nav := UI.header(self)
 	nav.add_child(UI.label("Star chart", 16, CYAN))
 	UI.spacer(nav)
+	nav.add_child(button("Galaxy", map.wide_view, "GalaxyView"))
+	nav.add_child(button("Spaceship", map.local_view, "ChartHome"))
 	local_orbit = button("Local orbit →", open_orbit, "LocalOrbit")
 	nav.add_child(local_orbit)
 	UI.menu(self, nav, [["Save expedition", save, "SaveChart"], ["New expedition", request_reset, "NewProspects"], ["Map & instruments", show_help, "Help"]])
 	resources = UI.label("", 15, MUTED)
 	UI.mount(self, Control.PRESET_TOP_WIDE, Vector4(28, 87, -28, 118)).add_child(resources)
 	var map_title := UI.column(UI.mount(self, Control.PRESET_TOP_LEFT, Vector4(36, 142, 540, 215)), 5)
-	map_title.add_child(UI.label("Choose your next star", 30))
-	map_title.add_child(UI.label("Select a system to inspect its evidence and route.", 15, MUTED))
+	map_title.add_child(UI.label("Every star is a destination", 30))
+	map_title.add_child(UI.label("Double-click a star to resolve its system · Wheel to zoom · Drag to pan", 15, MUTED))
 	var right := UI.inspector(self)
 	title = UI.label("", 27)
 	right.add_child(title)
+	right.add_child(UI.button("Resolve system →", func(): open_system(selected), "ResolveSystem"))
 	var tab_row := UI.row(right)
 	for page in ["Overview", "Evidence"]:
 		var node := button(page, set_tab.bind(page == "Evidence"), "Chart" + page)
@@ -114,7 +124,8 @@ func build_interface() -> void:
 	clock = UI.label("", 16, AMBER)
 	time.add_child(clock)
 	UI.spacer(time)
-	time.add_child(UI.label("Distances in light years · Archived observations", 14, MUTED))
+	time.add_child(UI.button("Catalogue this field", func(): catalogue_field(Vector2i(roundi(session.chart_center.x / Session.Atlas.CELL_LY), roundi(session.chart_center.y / Session.Atlas.CELL_LY))), "CatalogueField"))
+	time.add_child(UI.label("Light years · Galaxy opens the full disc", 14, MUTED))
 	status = UI.status(bottom)
 	travel_dialog = ConfirmationDialog.new()
 	travel_dialog.name = "ProspectTransit"
@@ -143,6 +154,7 @@ func build_interface() -> void:
 
 func select_system(id: String) -> void:
 	selected = id
+	session.viewed_system = id
 	refresh()
 
 func refresh() -> void:
@@ -257,14 +269,15 @@ func save() -> void:
 
 func open_orbit() -> void:
 	save()
-	get_tree().change_scene_to_file("res://scenes/main.tscn")
+	session.viewed_system = session.expedition.state.system
+	Nav.go(self, "res://scenes/system.tscn", map.star_position(session.expedition.state.system), true)
 
 func open_surface() -> void:
 	if not session.site_available(selected + "_b"):
 		return
-	session.surface_body = selected + "_b"
+	session.orbit_body = selected + "_b"
 	save()
-	get_tree().change_scene_to_file("res://scenes/surface.tscn")
+	Nav.go(self, "res://scenes/main.tscn", map.star_position(selected), true)
 
 func set_tab(show_evidence: bool) -> void:
 	details_tab = show_evidence
@@ -298,3 +311,16 @@ func _unhandled_key_input(event: InputEvent) -> void:
 
 func show_help() -> void:
 	UI.text_dialog(self, "Star chart", "Select a star to compare its route and evidence.\n\nOrbit fit measures received sunlight.\nSpectrum investigates the atmosphere.\nActivity watch samples stellar variability.\nLocal probe unlocks a landing region after arrival.\n\nObservations consume the displayed time and supplies.\nReview transit shows the full commitment before departure.\nEvidence contains dated readings and model limits.\n\nNew expeditions and neighbourhood seeds are in Menu.")
+
+func open_system(id: String) -> void:
+	session.viewed_system = id
+	Nav.go(self, "res://scenes/system.tscn", map.star_position(id), true)
+
+func catalogue_field(cell: Vector2i) -> void:
+	if Vector2(cell).length() * Session.Atlas.CELL_LY > Session.Atlas.GALAXY_RADIUS_LY: return
+	session.catalogue_field(cell)
+	if cell == Vector2i.ZERO: selected = "prospect_0"
+	else: selected = "field_%d_%d_0" % [cell.x, cell.y]
+	status.text = "Catalogue field resolved. Inspect its stars remotely; Spaceship has not moved."
+	save()
+	refresh()

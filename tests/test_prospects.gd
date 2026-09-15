@@ -95,7 +95,7 @@ func _initialize() -> void:
 	var migration: Dictionary = restored.restore_json(JSON.stringify(old_v2))
 	check(migration.ok, "First Foothold version-two save migrates: " + migration.message)
 	check(restored.expedition.state.year == 2412 and restored.fractional_hours == 12 and restored.expedition.state.bodies.eir_iii.factory == "warming", "Migration preserves established progress")
-	check(restored.expedition.state.bodies.size() == 15, "Migration adds unobserved prospects without removing old bodies")
+	check(restored.expedition.state.bodies.size() == 24, "Migration adds unobserved prospects without removing old bodies")
 	check(restored.restore_json(legacy.save_json()).ok, "Original version-one save migrates")
 	var old_orbit = Simulation.new()
 	old_orbit.command("survey", "eir_iii")
