@@ -10,7 +10,7 @@ func check(condition: bool, message: String) -> void:
 func window_settled(expected: int) -> void:
 	# Native fullscreen transitions finish asynchronously. A fixed delay can
 	# observe Cocoa between states, especially on the hosted software renderer.
-	var deadline := Time.get_ticks_msec() + 6000
+	var deadline := Time.get_ticks_msec() + 10000
 	var controls := root.get_node("DisplayControls")
 	while (int(root.mode) != expected or controls.changing) and Time.get_ticks_msec() < deadline:
 		await process_frame

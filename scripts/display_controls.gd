@@ -2,9 +2,12 @@ extends Node
 ## One native-window controller for all HUDs, including modal menus.
 var previous_mode := Window.MODE_WINDOWED
 var changing := false
+var resize_revision := 0
+var titlebar_revision := 0
 
 func _ready() -> void:
-	get_tree().root.size_changed.connect(refresh_buttons)
+	get_tree().root.size_changed.connect(func(): resize_revision += 1; refresh_buttons())
+	get_tree().root.titlebar_changed.connect(func(): titlebar_revision += 1)
 
 func refresh_buttons() -> void:
 	for control in get_tree().get_nodes_in_group("FullscreenButtons"):
@@ -38,18 +41,24 @@ func toggle() -> void:
 		return
 	changing = true
 	var entering := not fullscreen()
+	var initial_resize := resize_revision
+	var initial_titlebar := titlebar_revision
 	if entering:
 		previous_mode = window.mode
 		window.mode = Window.MODE_FULLSCREEN
 	else:
 		window.mode = previous_mode if previous_mode == Window.MODE_MAXIMIZED else Window.MODE_WINDOWED
 	refresh_buttons()
-	# Cocoa can take longer than a fixed 0.8 s delay. Reporting failure during
-	# a successful transition opens a dialog which then captures keyboard input.
-	# Wait for the requested native state before restoring the controls.
-	var deadline := Time.get_ticks_msec() + 6000
+	# Godot's Cocoa backend sets its mode flag immediately. DidEnterFullScreen
+	# then emits titlebar_changed; DidExitFullScreen updates the viewport size.
+	# A second toggle before those callbacks can be overwritten by the first.
+	var deadline := Time.get_ticks_msec() + 8000
+	var frames := 0
 	await get_tree().process_frame
-	while fullscreen() != entering and Time.get_ticks_msec() < deadline:
+	while Time.get_ticks_msec() < deadline or frames < 3:
+		var native_finished := OS.get_name() != "macOS" or (titlebar_revision > initial_titlebar if entering else resize_revision > initial_resize)
+		if fullscreen() == entering and native_finished: break
+		frames += 1
 		await get_tree().process_frame
 	changing = false
 	refresh_buttons()
