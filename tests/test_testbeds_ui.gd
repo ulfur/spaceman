@@ -1,4 +1,5 @@
 extends SceneTree
+const Driver = preload("res://tests/ui_driver.gd")
 const Session = preload("res://scripts/session.gd")
 var game: Control
 var failures := 0
@@ -30,16 +31,7 @@ func click_position(point: Vector2) -> void:
 		root.push_input(event, true)
 
 func click(id: String) -> void:
-	var control: Control = game.find_child(id, true, false)
-	check(control != null, "Control exists: " + id)
-	if control == null: return
-	var parent: Node = control.get_parent()
-	while parent != null:
-		if parent is ScrollContainer: parent.ensure_control_visible(control)
-		parent = parent.get_parent()
-	await process_frame
-	await process_frame
-	click_position(control.get_global_transform_with_canvas() * (control.size / 2.0))
+	check(await Driver.click(self, game, id), "Click " + id)
 
 func click_cell(cell: Vector2i) -> void:
 	var point: Vector2 = game.world.camera.unproject_position(game.world.cell_position(cell.x, cell.y))
@@ -47,6 +39,8 @@ func click_cell(cell: Vector2i) -> void:
 	click_position(game.viewport_container.get_global_transform_with_canvas() * point)
 
 func build(kind: String) -> void:
+	await click("BuildPalette")
+	await click("BuildLifesupport" if kind in ["refuge", "testbed"] else "BuildIndustry")
 	await click("Tool_" + kind)
 	var chosen := Vector2i(-1, -1)
 	var best := 1000.0
@@ -99,20 +93,29 @@ func run() -> void:
 	await click("Thermal_auto")
 	await click("PressureControl")
 	await click("WaterFeed")
+	await click("ControlsShielding")
 	await click("GrowLight")
 	await click("FitFilter")
+	check("Installing" in game.buttons.FitFilter.text, "Shielding controls acknowledge the pending installation")
+	await capture("22-trial-shielding-controls.png")
 	await click("TrialDay")
 	check(game.structure.trial.filter, "Filter button builds a real upgrade over time")
 	await click("FitCanopy")
 	await click("TrialWeek")
 	check(game.structure.trial.canopy, "Canopy consumes mined material and finishes")
 	var archives: int = session.expedition.state.ship.seeds
+	await click("ControlsCulture")
 	await click("Inoculate")
 	check(session.expedition.state.ship.seeds == archives - 1, "UI inoculation allocates an archive")
 	await click("TrialWeek")
 	await click("TrialWeek")
 	check(game.structure.trial.established and game.structure.trial.biomass_kg > 0.02, "Configured UI experiment establishes a culture")
+	var recorded: String = session.save_json()
 	await click("Graph_biomass")
+	check(game.diagram.view_mode == "history", "Measurement tab opens the full graph")
+	await capture("20-testbed-history.png")
+	await click("ViewChamber")
+	check(session.save_json() == recorded, "Changing views does not alter the experiment")
 	await capture("16-testbed-established.png")
 	await click("TrialSpeed10")
 	var hour: int = game.site.state.total_hours
@@ -125,9 +128,12 @@ func run() -> void:
 	root.size = Vector2i(1100, 760)
 	await capture("17-testbed-compact.png")
 	check(game.get_global_rect().encloses(game.find_child("TrialToolbar", true, false).get_global_rect()), "Trial controls fit the compact viewport")
+	await click("ControlsShielding")
 	await click("GrowLight")
 	await click("TrialWeek")
 	check(game.structure.trial.biomass_kg < 0.001, "Losing light under an opaque canopy kills the culture")
+	await click("ControlsCulture")
+	await click("Graph_biomass")
 	await capture("18-testbed-failed-light.png")
 	await click("TrialSurface")
 	await process_frame

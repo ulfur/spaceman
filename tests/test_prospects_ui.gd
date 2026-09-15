@@ -1,4 +1,5 @@
 extends SceneTree
+const Driver = preload("res://tests/ui_driver.gd")
 const Session = preload("res://scripts/session.gd")
 var game: Control
 var failures := 0
@@ -23,10 +24,7 @@ func click_position(position_value: Vector2) -> void:
 		root.push_input(event, true)
 
 func click(name: String) -> void:
-	var node: Control = game.find_child(name, true, false)
-	check(node != null, "Control exists: " + name)
-	if node != null:
-		click_position(node.get_global_transform_with_canvas() * (node.size / 2.0))
+	check(await Driver.click(self, game, name), "Click " + name)
 
 func capture(name: String) -> void:
 	await process_frame
@@ -43,7 +41,7 @@ func run() -> void:
 	current_scene = game
 	await process_frame
 	root.notify_mouse_entered()
-	click("Prospects")
+	await click("Prospects")
 	await process_frame
 	await process_frame
 	game = current_scene
@@ -52,43 +50,47 @@ func run() -> void:
 	var chosen := "prospect_1"
 	click_position(game.map.get_global_transform_with_canvas() * game.map.star_position(chosen))
 	check(game.selected == chosen, "Map star can be selected by mouse")
-	click("Observe_photometry")
+	await click("Observe_photometry")
 	check(session.prospects.evidence(chosen).has("flux_low"), "Instrument button resolves exposure")
-	click("Observe_spectrum")
-	click("Observe_monitor")
+	await click("Observe_spectrum")
+	await click("Observe_monitor")
 	check(session.prospects.evidence(chosen).has("activity_band"), "Activity programme updates evidence")
+	await click("ChartEvidence")
 	await capture("09-prospect-evidence.png")
-	click("ProspectDepart")
+	await click("ChartOverview")
+	await click("ProspectDepart")
 	check(game.travel_dialog.visible, "Transit is reviewed before commitment")
 	game.travel_dialog.hide()
 	game.travel_dialog.confirmed.emit()
 	check(session.expedition.state.system == chosen, "Chosen destination reached")
-	click("Observe_probe")
+	await click("Observe_probe")
 	check(session.site_available(chosen + "_b"), "Local probe opens new surface")
 	check("Atmospheric column" in game.dossier.text, "Dossier exposes local shielding context")
+	await click("ChartEvidence")
 	await process_frame
 	game.find_child("DossierScroll", true, false).scroll_vertical = 10000
 	await capture("10-prospect-local-probe.png")
 	root.size = Vector2i(1100, 760)
 	await capture("11-prospect-compact.png")
-	check(game.get_global_rect().encloses(game.find_child("ObservationTools", true, false).get_global_rect()), "Instrument dock fits compact window")
-	click("ProspectSurface")
+	check(game.get_global_rect().encloses(game.find_child("Inspector", true, false).get_global_rect()), "Contextual inspector fits compact window")
+	await click("ProspectSurface")
 	await process_frame
 	await process_frame
 	game = current_scene
 	check(game.name == "Surface", "Prospect opens actual 3D surface")
 	check(game.site.state.has("solar_factor"), "Generated planet affects loaded surface state")
 	await capture("12-prospect-surface.png")
-	click("ReturnOrbit")
+	await click("ReturnOrbit")
 	await process_frame
 	await process_frame
 	game = current_scene
 	check(game.sim.state.system == chosen and game.selected == chosen + "_b", "Orbital view stays in generated system")
-	click("Prospects")
+	await click("Prospects")
 	await process_frame
 	await process_frame
 	game = current_scene
-	click("NewProspects")
+	await click("Menu")
+	await click("NewProspects")
 	check(game.reset_dialog.visible, "New seed requires explicit reset confirmation")
 	await capture("13-prospect-new-expedition.png")
 	check(game.reset_dialog.size.y <= 350 and game.reset_dialog.size.x <= 600, "Reset confirmation remains bounded with buttons visible")

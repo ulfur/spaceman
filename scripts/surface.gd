@@ -1,4 +1,5 @@
 extends Control
+const UI = preload("res://scripts/interface.gd")
 const Session = preload("res://scripts/session.gd")
 const Surface = preload("res://scripts/surface_simulation.gd")
 const World = preload("res://scripts/surface_world.gd")
@@ -22,14 +23,19 @@ var autosave_elapsed := 0.0
 var notice_until_msec := 0
 var inventory: Label
 var time_label: Label
-var objective: Label
 var detail: Label
 var selection_title: Label
 var status: Label
 var build_hint: Label
 var power: Label
-var event_label: Label
-var tool_buttons: Array[Button] = []
+var tool_buttons: Dictionary = {}
+var inspector_panel: Control
+var detail_scroll: ScrollContainer
+var selection_page: VBoxContainer
+var build_page: VBoxContainer
+var build_open := false
+var build_tabs: Array[Button] = []
+var categories: Array[VBoxContainer] = []
 var speed_buttons: Array[Button] = []
 var toggle_button: Button
 var trial_button: Button
@@ -46,55 +52,11 @@ func _ready() -> void:
 	refresh()
 	set_tool(tool)
 
-func label(text: String, font_size: int = 15, color: Color = INK) -> Label:
-	var node := Label.new()
-	node.text = text
-	node.add_theme_font_size_override("font_size", font_size)
-	node.add_theme_color_override("font_color", color)
-	node.add_theme_color_override("font_shadow_color", Color(0, 0, 0, 0.45))
-	node.add_theme_constant_override("shadow_offset_x", 0)
-	node.add_theme_constant_override("shadow_offset_y", 1)
-	node.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	return node
 
-func skin(background: Color, accent: Color) -> StyleBoxFlat:
-	var style := StyleBoxFlat.new()
-	style.bg_color = background
-	style.border_color = accent
-	style.border_width_bottom = 2
-	style.content_margin_left = 12
-	style.content_margin_right = 12
-	style.content_margin_top = 9
-	style.content_margin_bottom = 9
-	return style
 
 func button(text: String, callback: Callable, node_name: String) -> Button:
-	var node := Button.new()
-	node.name = node_name
-	node.text = text
-	node.focus_mode = Control.FOCUS_NONE
-	node.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
-	node.add_theme_font_size_override("font_size", 13)
-	node.add_theme_color_override("font_color", INK)
-	node.add_theme_color_override("font_hover_color", Color.WHITE)
-	node.add_theme_color_override("font_pressed_color", AMBER)
-	node.add_theme_stylebox_override("normal", skin(Color(0.035, 0.06, 0.065, 0.87), Color("46514c")))
-	node.add_theme_stylebox_override("hover", skin(Color(0.12, 0.18, 0.18, 0.97), CYAN))
-	node.add_theme_stylebox_override("pressed", skin(Color(0.14, 0.19, 0.18, 0.97), AMBER))
-	node.add_theme_stylebox_override("disabled", skin(Color(0.05, 0.07, 0.07, 0.8), Color("343d38")))
-	node.pressed.connect(callback)
-	return node
+	return UI.button(text, callback, node_name)
 
-func margin_box(preset: int, offsets: Vector4) -> MarginContainer:
-	var node := MarginContainer.new()
-	node.set_anchors_and_offsets_preset(preset)
-	node.offset_left = offsets.x
-	node.offset_top = offsets.y
-	node.offset_right = offsets.z
-	node.offset_bottom = offsets.w
-	node.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	add_child(node)
-	return node
 
 func build_interface() -> void:
 	viewport_container = SubViewportContainer.new()
@@ -118,91 +80,76 @@ func build_interface() -> void:
 	shade_material.shader = preload("res://shaders/surface_hud.gdshader")
 	shade.material = shade_material
 	add_child(shade)
-	var top := margin_box(Control.PRESET_TOP_WIDE, Vector4(28, 22, -28, 112))
-	var stack := VBoxContainer.new()
-	stack.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	stack.add_theme_constant_override("separation", 9)
-	top.add_child(stack)
-	var header := HBoxContainer.new()
-	header.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	stack.add_child(header)
-	var title := label("SPACEMAN   /   FIRST FOOTHOLD", 23)
-	title.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	header.add_child(title)
-	if not site.environment.is_empty():
-		header.add_child(button("FIELD TRIALS →", open_trials, "FieldTrials"))
-	header.add_child(button("↑  ORBIT  ·  ESC", return_to_orbit, "ReturnOrbit"))
-	header.add_child(button("SAVE", save_game, "SaveSurface"))
-	stack.add_child(label(session.expedition.state.bodies[session.surface_body].name.to_upper() + "     /     LANDING SECTOR 01     /     SYNTHETIC PRESENCE", 12, CYAN))
-	inventory = label("", 15)
-	stack.add_child(inventory)
-	var left := margin_box(Control.PRESET_TOP_LEFT, Vector4(28, 148, 281, 310))
-	var left_stack := VBoxContainer.new()
-	left_stack.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	left_stack.add_theme_constant_override("separation", 12)
-	left.add_child(left_stack)
-	left_stack.add_child(label("AN INDUSTRIAL SEED", 12, AMBER))
-	objective = label("", 19)
-	objective.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	left_stack.add_child(objective)
-	power = label("", 14, CYAN)
-	left_stack.add_child(power)
-	event_label = label("", 13, MUTED)
-	event_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	left_stack.add_child(event_label)
-	var right := margin_box(Control.PRESET_TOP_RIGHT, Vector4(-273, 148, -28, 370))
-	var right_stack := VBoxContainer.new()
-	right_stack.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	right_stack.add_theme_constant_override("separation", 10)
-	right.add_child(right_stack)
-	selection_title = label("GROUND TELEMETRY", 12, AMBER)
-	right_stack.add_child(selection_title)
-	detail = label("", 14)
-	detail.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	right_stack.add_child(detail)
-	toggle_button = button("TOGGLE OPERATION", toggle_selected, "ToggleStructure")
-	right_stack.add_child(toggle_button)
-	trial_button = button("OPEN FIELD TRIAL →", open_selected_trial, "OpenTrial")
-	right_stack.add_child(trial_button)
-	var bottom := margin_box(Control.PRESET_BOTTOM_WIDE, Vector4(28, -203, -28, -20))
-	var bottom_stack := VBoxContainer.new()
-	bottom_stack.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	bottom_stack.add_theme_constant_override("separation", 8)
-	bottom.add_child(bottom_stack)
-	var time_row := HBoxContainer.new()
-	time_row.add_theme_constant_override("separation", 5)
-	time_row.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	bottom_stack.add_child(time_row)
-	time_label = label("", 13, AMBER)
-	time_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	time_row.add_child(time_label)
-	for rate in [0, 1, 10, 50]:
-		var node := button("Ⅱ" if rate == 0 else "%d×" % rate, set_speed.bind(rate), "Speed%d" % rate)
-		node.toggle_mode = true
-		node.custom_minimum_size.x = 52
-		time_row.add_child(node)
-		speed_buttons.append(node)
-	build_hint = label("", 13, INK)
-	bottom_stack.add_child(build_hint)
-	var belt := HBoxContainer.new()
-	belt.name = "Toolbelt"
-	belt.add_theme_constant_override("separation", 4)
-	bottom_stack.add_child(belt)
-	for index in range(TOOLS.size()):
-		var node := button("%d   %s" % [index, LABELS[index]], set_tool.bind(TOOLS[index]), "Tool_" + TOOLS[index])
+	UI.install(self)
+	var nav := UI.header(self)
+	nav.add_child(button("Star chart", open_chart, "SurfaceChart"))
+	nav.add_child(button("Orbit", return_to_orbit, "ReturnOrbit"))
+	nav.add_child(UI.label("/  Surface", 16, CYAN))
+	UI.spacer(nav)
+	nav.add_child(UI.label(session.expedition.state.bodies[session.surface_body].name + " · Sector 01", 16))
+	var menu := UI.menu(self, nav, [["Save expedition", save_game, "SaveSurface"], ["Surface controls", show_help, "Help"]])
+	menu.visibility_changed.connect(set_speed.bind(0))
+	var supplies := UI.row(UI.mount(self, Control.PRESET_TOP_WIDE, Vector4(28, 86, -28, 121)))
+	inventory = UI.label("", 16)
+	supplies.add_child(inventory)
+	UI.spacer(supplies)
+	power = UI.label("", 16, CYAN)
+	supplies.add_child(power)
+	var inspector := UI.inspector(self, 149, -111)
+	inspector_panel = inspector.get_parent()
+	inspector_panel.size_flags_vertical = Control.SIZE_SHRINK_BEGIN
+	var title_row := UI.row(inspector)
+	selection_title = UI.label("", 22)
+	selection_title.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	title_row.add_child(selection_title)
+	title_row.add_child(button("×", dismiss_inspector, "CloseInspector"))
+	var content := UI.scroll(inspector, "SurfaceDetailsScroll")
+	detail_scroll = content.get_parent()
+	content.resized.connect(fit_inspector)
+	selection_page = UI.column(content)
+	detail = UI.label("", 16, INK, true)
+	selection_page.add_child(detail)
+	trial_button = UI.button("Open field trial →", open_selected_trial, "OpenTrial", true)
+	selection_page.add_child(trial_button)
+	toggle_button = button("Suspend operation", toggle_selected, "ToggleStructure")
+	selection_page.add_child(toggle_button)
+	build_page = UI.column(content)
+	var tab_row := UI.row(build_page)
+	for category in ["Industry", "Life support"]:
+		var node := button(category, set_category.bind(build_tabs.size()), "Build" + category.replace(" ", ""))
 		node.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-		node.custom_minimum_size.y = 53
-		node.add_theme_font_size_override("font_size", 11)
+		tab_row.add_child(node)
+		build_tabs.append(node)
+	for index in range(2): categories.append(UI.column(build_page, 9))
+	for index in range(2, TOOLS.size()):
+		var kind: String = TOOLS[index]
+		var recipe: Dictionary = Surface.RECIPES["seed" if kind == "land" else kind]
+		var node := button("%s   [%d]" % [recipe.label, index], set_tool.bind(kind), "Tool_" + kind)
+		node.alignment = HORIZONTAL_ALIGNMENT_LEFT
+		node.tooltip_text = recipe.label + ": " + recipe_description(kind)
+		categories[1 if kind in ["refuge", "testbed"] else 0].add_child(node)
+		tool_buttons[kind] = node
+	build_hint = UI.label("Choose equipment, then place it on the ground.\n\nOre → metal → parts\nIce → water", 15, MUTED, true)
+	build_page.add_child(build_hint)
+	set_category(0)
+	var bottom := UI.footer(self)
+	var controls := UI.row(bottom)
+	controls.name = "Toolbelt"
+	for kind in ["inspect", "survey"]:
+		var node := button("Inspect [0]" if kind == "inspect" else "Survey [1]", set_tool.bind(kind), "Tool_" + kind)
+		controls.add_child(node)
+		tool_buttons[kind] = node
+	controls.add_child(UI.button("Build [B]", toggle_build, "BuildPalette", true))
+	UI.spacer(controls)
+	time_label = UI.label("", 15, AMBER)
+	controls.add_child(time_label)
+	for rate in [0, 1, 10, 50]:
+		var node := button("Pause" if rate == 0 else "%d×" % rate, set_speed.bind(rate), "Speed%d" % rate)
+		node.tooltip_text = "Pause [Space]" if rate == 0 else "%d simulated hours per second" % rate
+		controls.add_child(node)
 		node.toggle_mode = true
-		if TOOLS[index] == "testbed" and site.environment.is_empty():
-			node.disabled = true
-			node.tooltip_text = "Probe a generated prospect to obtain environmental measurements."
-		belt.add_child(node)
-		tool_buttons.append(node)
-	status = label("Choose surveyed ground near both ore and ice. Right-click cancels placement.", 13, CYAN)
-	status.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	bottom_stack.add_child(status)
-	bottom_stack.add_child(label("LMB select / place    ·    MMB drag to pan    ·    WHEEL zoom    ·    Q / E rotate    ·    SPACE pause    ·    0–9 tools", 11, MUTED))
+		speed_buttons.append(node)
+	status = UI.status(bottom)
 	set_speed(0)
 
 func set_speed(rate: int) -> void:
@@ -214,17 +161,13 @@ func set_speed(rate: int) -> void:
 	update_clock()
 
 func set_tool(kind: String) -> void:
+	if kind == "testbed" and site.environment.is_empty():
+		status.text = "Testbeds require the environmental probe from a generated world."
+		return
 	tool = kind
-	for index in range(tool_buttons.size()):
-		tool_buttons[index].set_pressed_no_signal(TOOLS[index] == kind)
-	if kind in ["inspect", "survey"]:
-		build_hint.text = "INSPECT · select ground or machinery" if kind == "inspect" else "SURVEY · reveal nearby deposits and foundation conditions"
-	else:
-		var recipe: Dictionary = Surface.RECIPES["seed" if kind == "land" else kind]
-		var costs: Array[String] = []
-		for resource in recipe.cost:
-			costs.append("%.0f %s" % [recipe.cost[resource], resource])
-		build_hint.text = "%s · %s · %.0f base hours · %.1f kW load" % [recipe.label.to_upper(), "1 ship module" if kind == "land" else " / ".join(costs), recipe.hours, recipe.power]
+	build_open = false
+	for id in tool_buttons: UI.selected(tool_buttons[id], id == kind)
+	update_detail()
 	update_preview()
 
 func terrain_input(event: InputEvent) -> void:
@@ -256,7 +199,7 @@ func select_or_build(cell: Vector2i) -> void:
 		status.text = outcome.message
 		notice_until_msec = Time.get_ticks_msec() + 2500
 		if outcome.ok:
-			if tool == "land":
+			if tool != "survey" and not Input.is_physical_key_pressed(KEY_SHIFT):
 				set_tool("inspect")
 			autosave()
 	refresh()
@@ -270,71 +213,78 @@ func update_preview() -> void:
 	world.set_preview("" if tool == "inspect" else tool, hovered, valid)
 	if hovered.x >= 0 and tool not in ["inspect", "survey"] and Time.get_ticks_msec() >= notice_until_msec:
 		var allowed: Dictionary = site.can_place(tool, hovered.x, hovered.y)
-		status.text = allowed.message
+		status.text = allowed.message if not allowed.ok else ""
+		update_detail()
 
 func refresh() -> void:
 	var state: Dictionary = site.state
 	var report: Dictionary = site.summary()
 	world.refresh(state)
 	var goods: Dictionary = state.resources
-	inventory.text = "ORE  %.1f     /     METAL  %.1f     /     WATER  %.1f     /     COMPONENTS  %.1f     /     MODULES ABOARD  %d" % [goods.ore, goods.metal, goods.water, goods.components, session.expedition.state.ship.modules]
-	power.text = "POWER  %.1f / %.1f kW\n%d installations linked" % [report.power_demand, report.power_supply, report.connected_count]
-	if state.has("solar_factor"):
-		power.text += "\nSolar yield factor  %.2f×" % state.solar_factor
+	inventory.text = "Ore %.1f t    ·    Metal %.1f t    ·    Water %.1f t    ·    Parts %.1f t" % [goods.ore, goods.metal, goods.water, goods.components]
+	power.text = "Power %.1f / %.1f kW" % [report.power_demand, report.power_supply]
+	power.tooltip_text = "%d linked installations · demand / supply" % report.connected_count
 	power.add_theme_color_override("font_color", AMBER if report.power_demand > report.power_supply else CYAN)
-	if not state.landed:
-		objective.text = "Find your foothold."
-	elif state.structures.size() < 4:
-		objective.text = "Power. Water.\nSomething to build with."
-	elif report.refuge_progress < 1.0:
-		objective.text = "Give life a room\nof its own."
-	else:
-		objective.text = "A small beginning."
-	event_label.text = "Enclosed pioneer culture: %d%%\n\nEnclosed life is not a planetary biosphere.\n\nOre → metal → components\nIce → water\nPower + supplies → refuge" % int(report.refuge_progress * 100)
-	if report.trials > 0:
-		event_label.text = "FIELD TRIALS\n%d chambers · %d successful records\nLive trial culture: %.1f g\n\nHeat, pressure, water and exposure determine the outcome. Open a testbed to inspect its measurements." % [report.trials, report.established_trials, report.trial_biomass_g]
-		objective.text = "A climate, in miniature." if report.established_trials > 0 else "Test the conditions."
-		if report.established_trials > 0 and report.trial_biomass_g < 0.001:
-			objective.text = "Read the consequences."
-	if state.events.size() > 0:
-		event_label.text += "\n\n" + state.events[-1].text
+	tool_buttons.land.visible = not state.landed
+	for kind in tool_buttons:
+		if kind not in ["inspect", "survey", "land"]: tool_buttons[kind].disabled = not state.landed or (kind == "testbed" and site.environment.is_empty())
 	update_clock()
 	update_detail()
 	update_preview()
+	status.tooltip_text = status.text
 
 func update_clock() -> void:
 	if time_label != null and site != null:
-		time_label.text = "YEAR %d  + %dh    /    SITE HOUR %d    /    %s" % [session.expedition.state.year, session.fractional_hours, site.state.total_hours, "PAUSED" if speed == 0 else "%d h/s" % speed]
+		time_label.text = "Year %d + %d h · %s" % [session.expedition.state.year, session.fractional_hours, "Paused" if speed == 0 else "%d h/s" % speed]
+		time_label.tooltip_text = "Site hour %d. Time advances the entire expedition." % site.state.total_hours
 
 func update_detail() -> void:
+	fit_inspector.call_deferred()
 	toggle_button.visible = false
 	trial_button.visible = false
-	var cell: Dictionary = site.cell_at(selected.x, selected.y)
+	selection_page.visible = not build_open
+	build_page.visible = build_open
+	inspector_panel.visible = build_open or selected.x >= 0 or tool != "inspect"
+	if build_open:
+		selection_title.text = "Build installation"
+		return
+	var inspecting: Vector2i = hovered if tool not in ["inspect", "survey"] else selected
+	var cell: Dictionary = site.cell_at(inspecting.x, inspecting.y)
+	if tool not in ["inspect", "survey"]:
+		selection_title.text = "Land module" if tool == "land" else "Place " + LABELS[TOOLS.find(tool)].to_lower()
+		detail.text = recipe_description(tool) + "\n\nClick suitable ground to place. Esc cancels."
+		if tool == "land": detail.text += "\n\nChoose a site near ore and ice. The module connects nearby machinery."
+		if not cell.is_empty():
+			detail.text += "\n\nGround %02d:%02d · Sunlight %.0f%%\n" % [inspecting.x, inspecting.y, cell.light * 100]
+			detail.text += site.can_place(tool, inspecting.x, inspecting.y).message
+		return
 	if cell.is_empty():
-		selection_title.text = "GROUND TELEMETRY"
-		detail.text = "Click the ground to inspect it.\n\nAmber outcrops: metal ore\nCyan outcrops: ice\n\nUndiscovered deposits stay hidden until surveyed."
+		selection_title.text = "Survey terrain"
+		detail.text = "Click ground to resolve resources and foundations.\n\nAmber outcrops: ore\nCyan outcrops: ice"
 		return
-	selection_title.text = "SECTOR  %02d : %02d" % [selected.x, selected.y]
-	if not cell.scanned:
-		detail.text = "UNSURVEYED\n\nSelect Survey [1] and click here to resolve local resources and foundations."
-		return
-	detail.text = "%s\nMean solar exposure  %.0f%%\n" % ["Stable foundation" if cell.buildable else "Unstable ground", cell.light * 100]
-	if cell.resource != "":
-		detail.text += "%s  %.1f / %.1f t\n" % ["Metal-bearing ore" if cell.resource == "metal" else "Accessible ice", cell.remaining, cell.initial]
-	else:
-		detail.text += "No mapped deposit\n"
 	var structure: Dictionary = site.structure_at(selected.x, selected.y)
-	if not structure.is_empty():
-		detail.text += "\n%s\n%s\nConstruction  %d%%\nService efficiency  %d%%" % [Surface.RECIPES[structure.kind].label.to_upper(), structure.status, int(structure.progress * 100), int(structure.efficiency * 100)]
-		if structure.queue.size() > 0:
-			detail.text += "\nRepeating: " + ", ".join(structure.queue)
-		if structure.kind == "refuge":
-			detail.text += "\nConsumes 0.02 water + 0.002 components / h."
-		if structure.kind == "testbed":
-			trial_button.visible = structure.progress >= 1.0
-			detail.text += "\nTrial: %.1f K · %.3f bar\nLive culture %.1f g" % [structure.trial.temperature_k, Surface.Testbed.pressure(structure.trial), structure.trial.biomass_kg * 1000.0]
-		toggle_button.visible = structure.kind != "seed"
-		toggle_button.text = "SUSPEND OPERATION" if structure.enabled else "RESUME OPERATION"
+	selection_title.text = "Ground %02d:%02d" % [selected.x, selected.y]
+	if not cell.scanned:
+		detail.text = "Unsurveyed ground.\nUse Survey [1] to identify deposits and check the foundation."
+		return
+	if structure.is_empty():
+		detail.text = "%s\nSunlight %.0f%%\n" % ["Stable foundation" if cell.buildable else "Unstable ground", cell.light * 100]
+		detail.text += ("%s · %.1f t remaining" % ["Ore" if cell.resource == "metal" else "Ice", cell.remaining]) if cell.resource != "" else "No mapped deposit"
+		return
+	selection_title.text = Surface.RECIPES[structure.kind].label
+	detail.text = structure.status + "\n"
+	if structure.progress < 1: detail.text += "Construction %d%%\n" % int(structure.progress * 100)
+	detail.text += "Service efficiency %d%%" % int(structure.efficiency * 100)
+	if structure.queue.size() > 0: detail.text += "\nProduces " + ", ".join(structure.queue).replace("components", "parts")
+	if cell.resource != "": detail.text += "\nDeposit %.1f t remaining" % cell.remaining
+	if structure.kind == "solar": detail.text += "\nSunlight %.0f%%" % (cell.light * 100)
+	if structure.kind == "seed": detail.text += "\n\nBuild power, then extract ore and ice. Refine metal and fabricate parts to maintain the installation."
+	if structure.kind == "refuge": detail.text += "\n\nLife support uses water and parts."
+	if structure.kind == "testbed":
+		trial_button.visible = structure.progress >= 1
+		detail.text += "\n\n%.1f K · %.3f bar\nCulture %.1f g live" % [structure.trial.temperature_k, Surface.Testbed.pressure(structure.trial), structure.trial.biomass_kg * 1000]
+	toggle_button.visible = structure.kind != "seed"
+	toggle_button.text = "Suspend operation" if structure.enabled else "Resume operation"
 
 func toggle_selected() -> void:
 	var outcome: Dictionary = session.surface_command("toggle", selected.x, selected.y)
@@ -382,9 +332,11 @@ func _process(delta: float) -> void:
 		autosave_elapsed = 0
 		autosave()
 
-func _unhandled_key_input(event: InputEvent) -> void:
+func _input(event: InputEvent) -> void:
+	if UI.menu_key(self, event): return
 	if not event is InputEventKey or not event.pressed or event.echo:
 		return
+	if event.keycode not in [KEY_B, KEY_SPACE, KEY_Q, KEY_E, KEY_ESCAPE, KEY_F11] and not (event.keycode >= KEY_0 and event.keycode <= KEY_9): return
 	if event.keycode >= KEY_0 and event.keycode <= KEY_9:
 		set_tool(TOOLS[event.keycode - KEY_0])
 	else:
@@ -396,8 +348,47 @@ func _unhandled_key_input(event: InputEvent) -> void:
 			KEY_E:
 				world.orbit_camera(0.15)
 			KEY_ESCAPE:
-				return_to_orbit()
+				if build_open or tool != "inspect" or selected.x >= 0: dismiss_inspector()
+				else: return_to_orbit()
+			KEY_B:
+				toggle_build()
 			KEY_F11:
 				var fullscreen := DisplayServer.window_get_mode() == DisplayServer.WINDOW_MODE_FULLSCREEN
 				DisplayServer.window_set_mode(DisplayServer.WINDOW_MODE_WINDOWED if fullscreen else DisplayServer.WINDOW_MODE_FULLSCREEN)
 	get_viewport().set_input_as_handled()
+
+func recipe_description(kind: String) -> String:
+	var recipe: Dictionary = Surface.RECIPES["seed" if kind == "land" else kind]
+	if kind == "land": return "1 onboard module · %d available" % session.expedition.state.ship.modules
+	var costs: Array[String] = []
+	for resource in recipe.cost: costs.append("%.0f t %s" % [recipe.cost[resource], "parts" if resource == "components" else resource])
+	return "%s\n%.0f base hours · %.1f kW load" % [" · ".join(costs), recipe.hours, recipe.power]
+
+func toggle_build() -> void:
+	build_open = not build_open
+	tool = "inspect"
+	for id in tool_buttons: UI.selected(tool_buttons[id], id == "inspect")
+	update_detail()
+	update_preview()
+
+func set_category(index: int) -> void:
+	for page in range(categories.size()):
+		categories[page].visible = page == index
+		UI.selected(build_tabs[page], page == index)
+
+func dismiss_inspector() -> void:
+	selected = Vector2i(-1, -1)
+	world.set_selected(selected)
+	set_tool("inspect")
+
+func open_chart() -> void:
+	set_speed(0)
+	if autosave(): get_tree().change_scene_to_file("res://scenes/prospects.tscn")
+
+func show_help() -> void:
+	UI.text_dialog(self, "Surface controls", "Click terrain or machinery to inspect it.\nB opens the build palette. Choose equipment, then place it.\nHold Shift to place multiple installations.\nRight-click or Esc cancels placement.\n\n1 surveys ground; 0 returns to inspection.\n2–9 select equipment directly.\nMiddle-drag pans · Wheel zooms · Q / E rotate.\nSpace pauses. Each 1× is one simulated hour per second.\nEsc dismisses the inspector before returning to orbit.\n\nSelect a finished testbed to open its field trial.")
+
+func fit_inspector() -> void:
+	if not inspector_panel.visible: return
+	var page: VBoxContainer = build_page if build_open else selection_page
+	detail_scroll.custom_minimum_size.y = clampf(page.get_combined_minimum_size().y, 60, maxf(60, size.y - 456))

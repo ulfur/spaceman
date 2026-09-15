@@ -1,4 +1,5 @@
 extends SceneTree
+const Driver = preload("res://tests/ui_driver.gd")
 const Session = preload("res://scripts/session.gd")
 var game: Control
 var failures := 0
@@ -44,9 +45,10 @@ func click_cell(cell: Vector2i) -> void:
 	click_position(game.viewport_container.get_global_transform_with_canvas() * screen)
 
 func build(kind: String) -> void:
-	var button: Button = game.find_child("Tool_" + kind, true, false)
-	check(button != null, "Tool visible: " + kind)
-	click_control(button)
+	check(await Driver.click(self, game, "BuildPalette"), "Open build palette")
+	check(await Driver.click(self, game, "BuildLifesupport" if kind in ["refuge", "testbed"] else "BuildIndustry"), "Choose build category")
+	if kind == "refuge": await capture("21-surface-build-palette.png")
+	check(await Driver.click(self, game, "Tool_" + kind), "Select equipment")
 	check(game.tool == kind, "Hit-tested tool selection " + kind)
 	var chosen := Vector2i(-1, -1)
 	var best := 1000.0
@@ -90,7 +92,7 @@ func run() -> void:
 	var roof: Vector2 = game.world.camera.unproject_position(game.world.cell_position(10, 10) + Vector3(0, 3.0, 0))
 	check(game.world.pick_cell(roof, true) == Vector2i(10, 10), "Inspecting a roof selects its machine, not ground behind it")
 	for kind in ["solar", "solar", "solar", "mine", "ice_well", "refinery", "fabricator", "refuge"]:
-		build(kind)
+		await build(kind)
 	click_control(game.find_child("Speed10", true, false))
 	game._process(0.4)
 	check(game.speed == 10, "Speed control drives simulation")
@@ -105,11 +107,16 @@ func run() -> void:
 	game.world.zoom_camera(-20)
 	await capture("06-surface-industry.png")
 	check(game.get_global_rect().encloses(game.find_child("Toolbelt", true, false).get_global_rect()), "Toolbelt fits normal window")
-	click_control(game.find_child("ToggleStructure", true, false))
+	check(await Driver.click(self, game, "ToggleStructure"), "Machine action is reachable")
 	check(not game.site.structure_at(game.selected.x, game.selected.y).enabled, "Selected installation can be suspended")
 	root.size = Vector2i(1100, 760)
 	await capture("07-surface-compact.png")
 	check(game.get_global_rect().encloses(game.find_child("Toolbelt", true, false).get_global_rect()), "Toolbelt fits compact window")
+	var unchanged: String = game.session.save_json()
+	check(await Driver.click(self, game, "BuildPalette"), "Palette can reopen")
+	Driver.key(root, KEY_ESCAPE)
+	check(not game.build_open and game.tool == "inspect" and game.selected.x < 0, "Escape cancels context before leaving surface")
+	check(game.session.save_json() == unchanged, "Opening and closing UI does not advance or mutate simulation")
 	var hours_before_return: int = game.site.state.total_hours
 	click_control(game.find_child("ReturnOrbit", true, false))
 	await process_frame
