@@ -73,13 +73,13 @@ func run() -> void:
 	await click("Select_eir_iii")
 	while universe.moving(): await process_frame
 	await click("Action_survey")
-	var pose: Transform3D = universe.meshes.eir_iii.transform
+	var pose: Basis = universe.meshes.eir_iii.basis.orthonormalized()
 	var camera_pose: Vector3 = universe.direction
 	await click("Surface")
 	await transition()
 	check(game.name == "Regions", "Planet approach exposes geographic selection")
-	check(universe.meshes.eir_iii.get_instance_id() == body_instance and universe.meshes.eir_iii.transform.is_equal_approx(pose), "Region overlay retains the planet without a replacement or rotation reset")
-	check(universe.direction.is_equal_approx(camera_pose), "Region overlay preserves the inspection camera")
+	check(universe.meshes.eir_iii.get_instance_id() == body_instance and universe.meshes.eir_iii.basis.orthonormalized().is_equal_approx(pose), "Survey approach retains the physical planet and its orientation")
+	check(not universe.direction.is_equal_approx(camera_pose) and universe.distance < universe.radii.eir_iii * 3, "Survey approaches the selected geography at a closer range")
 	await click("LocateRegion")
 	while universe.moving(): await process_frame
 	var region := Vector2i(48, 15)
@@ -131,7 +131,7 @@ func run() -> void:
 	if game.name != "Regions":
 		printerr("FAIL: Planet navigation did not leave Surface"); quit(1); return
 	check(game.globe.established.size() == 1, "Planet map marks the established site")
-	region = Vector2i(41, 21)
+	region = Vector2i(45, 18)
 	projected = game.globe.project(region)
 	Driver.point(root, game.globe.get_global_transform_with_canvas() * Vector2(projected.x, projected.y))
 	check(game.selected == region, "Another region can be chosen on the same planet")

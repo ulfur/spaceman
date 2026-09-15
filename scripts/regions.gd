@@ -10,6 +10,8 @@ var detail: Label
 var title: Label
 var approach: Button
 var status: Label
+var contact := ""
+var layer_buttons: Array[Button] = []
 
 func _ready() -> void:
 	UI.install(self)
@@ -20,6 +22,8 @@ func _ready() -> void:
 	globe.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	globe.offset_top = 178; globe.offset_left = 20; globe.offset_right = -400; globe.offset_bottom = -112
 	globe.region_selected.connect(select_region)
+	globe.contact_selected.connect(select_contact)
+	globe.contact_entered.connect(open_contact)
 	globe.region_entered.connect(func(_region): approach_region())
 	var body: Dictionary = session.expedition.known_body(session.surface_body).duplicate(true)
 	if body.is_empty(): Nav.go(self, "res://scenes/main.tscn", size * 0.5, false); return
@@ -34,8 +38,15 @@ func _ready() -> void:
 	nav.add_child(UI.button("Locate site", func(): globe.focus_region(selected), "LocateRegion"))
 	UI.menu(self, nav, [["Save expedition", session.save_disk, "SaveRegions"]])
 	var heading := UI.column(UI.mount(self, Control.PRESET_TOP_LEFT, Vector4(32, 112, 760, 182)), 5)
-	heading.add_child(UI.label("Choose your foothold", 32))
-	heading.add_child(UI.label("Click a location · Drag to orbit · Sunlight follows geography and expedition time", 15, UI.MUTED))
+	heading.add_child(UI.label("SURFACE SURVEY", 26))
+	heading.add_child(UI.label("Select a region · Compare screening layers · Reconnoitre before landing", 15, UI.MUTED))
+	var rail := UI.row(UI.mount(self, Control.PRESET_BOTTOM_WIDE, Vector4(32, -174, -414, -124)))
+	rail.add_child(UI.button("−", func(): globe.universe.zoom(1.5), "NavZoomOut"))
+	rail.add_child(UI.button("+", func(): globe.universe.zoom(1.0 / 1.5), "NavZoomIn"))
+	for layer in [["solar", "Solar"], ["ore", "Ore"], ["ice", "Ice"], ["natural", "Visual"]]:
+		var item := UI.button(layer[1], choose_layer.bind(layer[0]), "Layer_" + layer[0])
+		rail.add_child(item); layer_buttons.append(item)
+	choose_layer("solar")
 	var right := UI.inspector(self)
 	title = UI.label("", 25); right.add_child(title)
 	detail = UI.label("", 16, UI.INK, true); right.add_child(detail)
@@ -48,12 +59,14 @@ func _ready() -> void:
 	approach = UI.button("Reconnoitre this site →", approach_region, "ApproachRegion", true)
 	right.add_child(approach)
 	var footer := UI.footer(self)
-	footer.add_child(UI.label("80 m working sites · Terrain between sites is not yet traversable · Procedural surface reconstruction", 13, UI.MUTED))
+	footer.add_child(UI.label("Screening is provisional · Survey ground deposits before committing a factory module", 13, UI.MUTED))
 	status = UI.status(footer)
 	select_region(selected)
 	Nav.arrive(self, globe)
 
 func select_region(region: Vector2i) -> void:
+	contact = ""
+	globe.universe.selected = session.surface_body
 	selected = region
 	globe.selected_region = region
 	globe.queue_redraw()
@@ -61,18 +74,39 @@ func select_region(region: Vector2i) -> void:
 	var key := Atlas.address(session.surface_body, region)
 	var established: bool = session.sites.has(key) and session.sites[key].state.landed
 	title.text = Atlas.region_label(region)
-	detail.text = "ORBITAL SCREENING\n\nSolar potential %.2f×\nOre prior %.2f×\nAccessible ice prior %.2f×\n\n" % [context.get("solar_factor", 1.0), context.get("ore_factor", 1.0), context.get("ice_factor", 1.0)]
+	detail.text = "SCREENING PRIORS\n\nSolar potential %.2f×\nOre prior %.2f×\nAccessible ice prior %.2f×\n\n" % [context.get("solar_factor", 1.0), context.get("ore_factor", 1.0), context.get("ice_factor", 1.0)]
 	detail.text += "Surface surveys resolve individual deposits and construction sites. Latitude modifies the solar screening estimate; it does not resolve weather.\n\n"
 	detail.text += "%d installations retained at this site." % session.sites[key].state.structures.size() if established else "Reconnaissance commits no hardware. Choose the exact module position on the ground; landing consumes one stocked factory module."
 	approach.text = "Resume this site →" if established else "Reconnoitre this site →"
 	approach.disabled = not session.site_available(session.surface_body)
 	status.text = "%d modules aboard · Industry at other sites continues when time advances" % session.expedition.state.ship.modules
 
+func choose_layer(layer: String) -> void:
+	globe.set_screening(layer)
+	for item in layer_buttons: UI.selected(item, item.name == "Layer_" + layer)
+
+func select_contact(id: String) -> void:
+	contact = id
+	globe.universe.selected = id
+	title.text = globe.universe.title(id)
+	detail.text = "NAVIGATION CONTACT\n\nLeave surface screening to inspect this object's orbital neighbourhood. Your selected geographic site is retained."
+	approach.text = "Track in orbit →"
+	approach.disabled = false
+
+func open_contact(id: String) -> void:
+	if id == session.expedition.state.system:
+		session.viewed_system = id
+		Nav.go(self, "res://scenes/system.tscn", globe.size * 0.5, false)
+		return
+	session.orbit_body = id
+	Nav.go(self, "res://scenes/main.tscn", globe.size * 0.5, false)
+
 func revisit(region: Vector2i) -> void:
 	globe.focus_region(region)
 	select_region(region)
 
 func approach_region() -> void:
+	if contact != "": open_contact(contact); return
 	if not session.choose_region(session.surface_body, selected): return
 	session.save_disk()
 	var point: Vector3 = globe.project(selected)

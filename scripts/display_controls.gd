@@ -2,22 +2,20 @@ extends Node
 ## One native-window controller for all HUDs, including modal menus.
 var previous_mode := Window.MODE_WINDOWED
 var changing := false
+var resize_revision := 0
+var titlebar_revision := 0
 
 func _ready() -> void:
-	get_tree().root.size_changed.connect(refresh_buttons)
+	get_tree().root.size_changed.connect(func(): resize_revision += 1; refresh_buttons())
+	get_tree().root.titlebar_changed.connect(func(): titlebar_revision += 1)
 
 func refresh_buttons() -> void:
 	for control in get_tree().get_nodes_in_group("FullscreenButtons"):
 		control.text = "Windowed" if fullscreen() else "Full screen"
+		control.disabled = changing
 
 static func shared(owner: Node) -> Node:
-	var root := owner.get_tree().root
-	var service := root.get_node_or_null("DisplayControls")
-	if service == null:
-		service = load("res://scripts/display_controls.gd").new()
-		service.name = "DisplayControls"
-		root.add_child(service)
-	return service
+	return owner.get_tree().root.get_node("DisplayControls")
 
 static func is_shortcut(event: InputEvent) -> bool:
 	if not event is InputEventKey or not event.pressed or event.echo: return false
@@ -43,13 +41,25 @@ func toggle() -> void:
 		return
 	changing = true
 	var entering := not fullscreen()
+	var initial_resize := resize_revision
+	var initial_titlebar := titlebar_revision
 	if entering:
 		previous_mode = window.mode
 		window.mode = Window.MODE_FULLSCREEN
 	else:
 		window.mode = previous_mode if previous_mode == Window.MODE_MAXIMIZED else Window.MODE_WINDOWED
-	# Cocoa's transition is asynchronous; read the resulting native mode.
-	await get_tree().create_timer(0.8).timeout
+	refresh_buttons()
+	# Godot's Cocoa backend sets its mode flag immediately. DidEnterFullScreen
+	# then emits titlebar_changed; DidExitFullScreen updates the viewport size.
+	# A second toggle before those callbacks can be overwritten by the first.
+	var deadline := Time.get_ticks_msec() + 8000
+	var frames := 0
+	await get_tree().process_frame
+	while Time.get_ticks_msec() < deadline or frames < 3:
+		var native_finished := OS.get_name() != "macOS" or (titlebar_revision > initial_titlebar if entering else resize_revision > initial_resize)
+		if fullscreen() == entering and native_finished: break
+		frames += 1
+		await get_tree().process_frame
 	changing = false
 	refresh_buttons()
 	if fullscreen() != entering and DisplayServer.get_name() != "headless":
@@ -57,6 +67,7 @@ func toggle() -> void:
 
 func explain(message: String) -> void:
 	var dialog := AcceptDialog.new()
+	dialog.name = "FullscreenExplanation"
 	dialog.title = "Full screen"
 	dialog.dialog_text = message
 	dialog.dialog_autowrap = true

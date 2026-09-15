@@ -64,36 +64,31 @@ func build_interface() -> void:
 	UI.menu(self, nav, [["Save expedition", save_game, "Save"], ["Load expedition", load_game, "Load"], ["Ship's journal", show_journal, "Journal"], ["Controls & help", show_help, "Help"]])
 	resources = UI.label("", 15, MUTED)
 	UI.mount(self, Control.PRESET_TOP_WIDE, Vector4(28, 87, -24, 118)).add_child(resources)
-	var scene := UI.column(UI.mount(self, Control.PRESET_FULL_RECT, Vector4(28, 140, -410, -112)), 14)
+	var caption := UI.column(UI.mount(self, Control.PRESET_TOP_LEFT, Vector4(32, 130, 850, 186)), 4)
+	caption.add_child(UI.label("ORBITAL NAVIGATION", 26))
+	caption.add_child(UI.label("Select contact · Double-click to focus · Drag to rotate", 14, MUTED))
+	var camera_controls := UI.row(UI.mount(self, Control.PRESET_BOTTOM_WIDE, Vector4(32, -174, -414, -124)))
+	camera_controls.add_child(UI.button("−", func(): view.universe.zoom(1.5), "NavZoomOut"))
+	camera_controls.add_child(UI.button("+", func(): view.universe.zoom(1.0 / 1.5), "NavZoomIn"))
+	camera_controls.add_child(UI.button("Focus", view.frame_body, "FramePlanet"))
+	camera_controls.add_child(UI.button("Planet + moons", view.frame_family, "FrameMoons"))
+	camera_controls.add_child(UI.button("Day side", view.day_side, "DaySide"))
+	var inspector := UI.inspector(self)
+	inspector.add_child(UI.label("TARGET CONTACT", 12, GOLD))
 	body_list = HBoxContainer.new()
 	body_list.name = "LocalBodies"
 	var body_scroll := ScrollContainer.new()
 	body_scroll.name = "OrbitBodiesScroll"
 	body_scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_AUTO
 	body_scroll.vertical_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
-	body_scroll.custom_minimum_size.y = 56
-	scene.add_child(body_scroll)
-	body_scroll.add_child(body_list)
-	heading = UI.label("", 36)
-	scene.add_child(heading)
-	subtitle = UI.label("", 16, MUTED, true)
-	subtitle.custom_minimum_size.x = 222
-	subtitle.size_flags_horizontal = Control.SIZE_SHRINK_BEGIN
-	scene.add_child(subtitle)
-	var space := Control.new()
-	space.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	space.custom_minimum_size = Vector2(240, 220)
-	space.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	scene.add_child(space)
-	var camera_controls := UI.row(scene)
-	camera_controls.add_child(UI.button("Planet", view.frame_body, "FramePlanet"))
-	camera_controls.add_child(UI.button("Moons", view.frame_family, "FrameMoons"))
-	camera_controls.add_child(UI.button("Day side", view.day_side, "DaySide"))
-	camera_controls.add_child(UI.label("Drag to orbit · Scroll / pinch to zoom", 12, MUTED))
-	telemetry = UI.label("", 18, TEAL, true)
-	scene.add_child(telemetry)
-	var inspector := UI.inspector(self)
+	body_scroll.custom_minimum_size.y = 54
+	inspector.add_child(body_scroll); body_scroll.add_child(body_list)
+	heading = UI.label("", 30); inspector.add_child(heading)
+	subtitle = UI.label("", 14, MUTED, true); inspector.add_child(subtitle)
+	telemetry = UI.label("", 14, TEAL, true); inspector.add_child(telemetry)
 	operations = UI.scroll(inspector, "OrbitInspectorScroll")
+	view.contact_selected.connect(func(id): select_contact(id, false))
+	view.contact_entered.connect(func(id): select_contact(id, true))
 	var footer := UI.footer(self)
 	var time := UI.row(footer)
 	year_label = UI.label("", 16, GOLD)
@@ -149,11 +144,19 @@ func refresh() -> void:
 	view.show_body(body)
 	refresh_operations(body)
 
-func select_body(id: String) -> void:
+func select_body(id: String, focus_camera: bool = true) -> void:
+	view.selection_only = not focus_camera
 	selected = id
 	session.orbit_body = id
 	industry_open = false
 	refresh()
+
+func select_contact(id: String, approach: bool) -> void:
+	if id == sim.state.system:
+		open_system()
+		return
+	select_body(id, false)
+	if approach: view.frame_body()
 
 func action_button(text: String, action: String, disabled: bool = false, hint: String = "") -> void:
 	var node := UI.button(text, act.bind(action), "Action_" + action, action in ["survey", "deploy", "collect", "seed"])
@@ -286,7 +289,7 @@ func show_journal() -> void:
 	UI.text_dialog(self, "Ship's journal", "\n".join(lines))
 
 func show_help() -> void:
-	UI.text_dialog(self, "Orbit", "Select a local body, then survey or operate it.\n\nStar chart: observe distant systems and plan travel.\nSurface access: choose and manage a landing region.\nTime controls: advance the whole expedition in years.\n\nChanges autosave. Save, load and the journal are in Menu.\nFull screen button: Control–Command–F on Mac, Option/Alt–Return, or F11.")
+	UI.text_dialog(self, "Orbit", "Click a contact or its edge bearing to target it. Double-click or Focus approaches it. Planet + moons frames the local hierarchy.\n\nWheel, two-finger scroll, pinch, + / −: zoom. Drag: rotate. Home: planet and moons.\n\nStar chart: observe distant systems and plan travel.\nSurface access: choose and manage a landing region.\nTime controls: advance the whole expedition in years.\n\nChanges autosave. Save, load and the journal are in Menu.\nFull screen button: Control–Command–F on Mac, Option/Alt–Return, or F11.")
 
 func open_system() -> void:
 	session.viewed_system = sim.state.system

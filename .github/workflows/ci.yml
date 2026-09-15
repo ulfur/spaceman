@@ -42,6 +42,15 @@ jobs:
           godot --headless --path . --editor --import 2>&1 | tee build/import.log
           godot --headless --path . --script res://tools/check_scripts.gd 2>&1 | tee -a build/import.log
           if grep -E 'SCRIPT ERROR|Parse Error|ERROR:|FAIL:' build/import.log; then exit 1; fi
+      - name: Normal game launch and restored generated-system launch
+        timeout-minutes: 2
+        env:
+          LIBGL_ALWAYS_SOFTWARE: "1"
+        run: |
+          xvfb-run -a godot --path . --audio-driver Dummy --quit-after 12 -- --smoke 2>&1 | tee build/startup.log
+          godot --headless --path . --script res://tests/seed_launch_save.gd -- --seed-launch-save 2>&1 | tee -a build/startup.log
+          xvfb-run -a godot --path . --audio-driver Dummy --quit-after 12 2>&1 | tee -a build/startup.log
+          if grep -E 'SCRIPT ERROR|Parse Error|ERROR:|FAIL:' build/startup.log; then exit 1; fi
       - name: Deterministic simulation tests
         timeout-minutes: 2
         run: |
@@ -122,6 +131,14 @@ jobs:
         run: |
           xvfb-run -a godot --path . --rendering-method gl_compatibility --audio-driver Dummy --script res://tests/test_display_ui.gd -- --smoke 2>&1 | tee build/display-ui.log
           if grep -E 'SCRIPT ERROR|Parse Error|ERROR:|FAIL:' build/display-ui.log; then exit 1; fi
+      - name: Render command navigation and exercise pointer controls
+        if: ${{ !cancelled() }}
+        timeout-minutes: 3
+        env:
+          LIBGL_ALWAYS_SOFTWARE: "1"
+        run: |
+          xvfb-run -a godot --path . --rendering-method gl_compatibility --audio-driver Dummy --script res://tests/test_command_ui.gd -- --smoke 2>&1 | tee build/command-ui.log
+          if grep -E 'SCRIPT ERROR|Parse Error|ERROR:|FAIL:' build/command-ui.log; then exit 1; fi
       - name: Preserve visual checks and test logs
         if: always()
         uses: actions/upload-artifact@v4
@@ -171,6 +188,10 @@ jobs:
           mkdir -p build
           touch build/.gdignore
           Godot --headless --path . --editor --import 2>&1 | tee build/macos-display.log
+          Godot --path . --audio-driver Dummy --quit-after 6 -- --smoke 2>&1 | tee -a build/macos-display.log
+          Godot --headless --path . --script res://tests/seed_launch_save.gd -- --seed-launch-save 2>&1 | tee -a build/macos-display.log
+          Godot --path . --audio-driver Dummy --quit-after 6 2>&1 | tee -a build/macos-display.log
+          Godot --path . --rendering-method gl_compatibility --audio-driver Dummy --script res://tests/test_command_ui.gd -- --smoke 2>&1 | tee -a build/macos-display.log
           Godot --path . --rendering-method gl_compatibility --audio-driver Dummy --script res://tests/test_display_ui.gd -- --smoke 2>&1 | tee -a build/macos-display.log
           if grep -E 'SCRIPT ERROR|Parse Error|ERROR:|FAIL:' build/macos-display.log; then exit 1; fi
       - name: Preserve Mac display checks
