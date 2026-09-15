@@ -7,12 +7,19 @@ func _initialize() -> void: call_deferred("run")
 func check(condition: bool, message: String) -> void:
 	if not condition: failures += 1; printerr("FAIL: " + message)
 
+func expected_window_mode(expected: int) -> bool:
+	# Cocoa classifies a desktop window whose frame fills the usable screen as
+	# MAXIMIZED, even after a WINDOWED request. Both are outside fullscreen.
+	# See DisplayServerMacOS::window_get_mode; FULLSCREEN must still match exactly.
+	if expected == Window.MODE_WINDOWED: return root.mode in [Window.MODE_WINDOWED, Window.MODE_MAXIMIZED]
+	return int(root.mode) == expected
+
 func window_settled(expected: int) -> void:
 	# Native fullscreen transitions finish asynchronously. A fixed delay can
 	# observe Cocoa between states, especially on the hosted software renderer.
 	var deadline := Time.get_ticks_msec() + 10000
 	var controls := root.get_node("DisplayControls")
-	while (int(root.mode) != expected or controls.changing) and Time.get_ticks_msec() < deadline:
+	while (not expected_window_mode(expected) or controls.changing) and Time.get_ticks_msec() < deadline:
 		await process_frame
 	await process_frame
 
@@ -50,7 +57,7 @@ func run() -> void:
 			root.push_input(key, true)
 		await window_settled(original_mode)
 		print("Native modes on %s: before=%d restored=%d controller_busy=%s" % [view, original_mode, root.mode, root.get_node("DisplayControls").changing])
-		check(int(root.mode) == original_mode, "Control–Command–F restores the original desktop window mode with menu focused on " + view)
+		check(expected_window_mode(original_mode), "Control–Command–F returns to a desktop window with menu focused on " + view)
 		game.queue_free(); await process_frame
 	print("Native display controls on %s: %d failures" % [OS.get_name(), failures])
 	quit(1 if failures else 0)
