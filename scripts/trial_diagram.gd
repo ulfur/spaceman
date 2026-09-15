@@ -1,5 +1,6 @@
 extends Control
-## Live engineering schematic and measured history; drawing never advances state.
+## Physical cutaway and measured history. Rendering never advances trial state.
+const Art = preload("res://scripts/industrial_art.gd")
 const Model = preload("res://scripts/testbed_simulation.gd")
 var trial: Dictionary = {}
 var environment: Dictionary = {}
@@ -8,6 +9,11 @@ var metric := "temperature"
 var view_mode := "chamber"
 var running := false
 var phase := 0.0
+var viewport: SubViewport
+var scene_container: SubViewportContainer
+var chamber: Node3D
+var camera: Camera3D
+var lamp: OmniLight3D
 const INK := Color("dce7e1")
 const MUTED := Color("7d9da9")
 const CYAN := Color("81c9c0")
@@ -16,11 +22,91 @@ const AMBER := Color("dfb77a")
 func _ready() -> void:
 	mouse_filter = Control.MOUSE_FILTER_IGNORE
 	resized.connect(queue_redraw)
+	build_chamber()
+
+func build_chamber() -> void:
+	scene_container = SubViewportContainer.new()
+	scene_container.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	scene_container.show_behind_parent = true
+	scene_container.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	scene_container.stretch = true
+	add_child(scene_container)
+	viewport = SubViewport.new()
+	viewport.size = Vector2i(800, 340)
+	viewport.own_world_3d = true
+	viewport.transparent_bg = true
+	viewport.msaa_3d = Viewport.MSAA_2X
+	scene_container.add_child(viewport)
+	var world := Node3D.new()
+	viewport.add_child(world)
+	var env_node := WorldEnvironment.new()
+	var env := Environment.new()
+	env.background_mode = Environment.BG_CLEAR_COLOR
+	env.background_color = Color(0, 0, 0, 0)
+	env.ambient_light_source = Environment.AMBIENT_SOURCE_COLOR
+	env.ambient_light_sky_contribution = 0.0
+	env.ambient_light_color = Color("96b8bf")
+	env.ambient_light_energy = 0.65
+	env.tonemap_mode = Environment.TONE_MAPPER_FILMIC
+	env.glow_enabled = false
+	env.glow_intensity = 0.22
+	env_node.environment = env
+	world.add_child(env_node)
+	var sun := DirectionalLight3D.new()
+	sun.rotation_degrees = Vector3(-42, -32, 0)
+	sun.light_color = Color("efe1c2")
+	sun.light_energy = 1.6
+	sun.shadow_enabled = true
+	world.add_child(sun)
+	var rim := DirectionalLight3D.new()
+	rim.rotation_degrees = Vector3(-28, 140, 0)
+	rim.light_color = Color("72bcc9")
+	rim.light_energy = 0.45
+	world.add_child(rim)
+	chamber = Art.build("testbed")
+	world.add_child(chamber)
+	# Front glazing is omitted in the inspection cutaway. The experiment stays sealed.
+	chamber.get_node("Glazing").visible = false
+	var glass := StandardMaterial3D.new()
+	glass.albedo_color = Color(0.20, 0.47, 0.54, 0.16)
+	glass.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+	glass.roughness = 0.15
+	glass.metallic = 0.2
+	Art.box(chamber, Vector3(0, 1.72, -1.53), Vector3(3.04, 2.04, 0.018), glass)
+	Art.box(chamber, Vector3(-1.53, 1.72, 0), Vector3(0.018, 2.04, 3.04), glass)
+	var film := Art.box(chamber, Vector3(0, 2.73, 0), Vector3(2.96, 0.01, 2.96), glass)
+	film.name = "FilterFilm"
+	Art.shell(world, Vector3(0, -0.05, 0), Vector3(4.45, 0.16, 4.45), Art.finish("13242c", 0.4))
+	lamp = OmniLight3D.new()
+	lamp.position = Vector3(0, 2.3, 0)
+	lamp.omni_range = 3.3
+	lamp.light_color = Color("a7edca")
+	lamp.light_energy = 0.65
+	world.add_child(lamp)
+	camera = Camera3D.new()
+	camera.projection = Camera3D.PROJECTION_ORTHOGONAL
+	camera.size = 5.6
+	camera.position = Vector3(6.2, 5.3, 7.8)
+	world.add_child(camera)
+	camera.look_at(Vector3(0, 1.45, 0))
+	camera.current = true
 
 func _process(delta: float) -> void:
-	if running and view_mode == "chamber":
-		phase += delta
-		queue_redraw()
+	var showing: bool = view_mode == "chamber" and not trial.is_empty()
+	scene_container.visible = showing
+	viewport.render_target_update_mode = SubViewport.UPDATE_ALWAYS if showing else SubViewport.UPDATE_DISABLED
+	if not showing: return
+	if running: phase += delta
+	var culture: MeshInstance3D = chamber.get_node("Culture")
+	culture.material_override.set_shader_parameter("density", clampf(trial.biomass_kg / Model.CONFIG.culture.capacity_kg, 0.0, 1.0))
+	culture.material_override.set_shader_parameter("liquid", 1.0 if trial.temperature_k > 273.15 and trial.water_kg > 0.1 else 0.0)
+	culture.material_override.set_shader_parameter("phase", phase if trial.operating else 0.0)
+	chamber.get_node("Canopy").visible = trial.canopy
+	chamber.get_node("FilterFilm").visible = trial.filter and not trial.canopy
+	chamber.get_node("Canopy").position = Vector3(0, 3.1, -0.65)
+	lamp.visible = trial.lamp and trial.operating
+	chamber.get_node("LampStrip").visible = lamp.visible
+	queue_redraw()
 
 func text_at(point: Vector2, text: String, font_size: int = 14, color: Color = INK) -> void:
 	draw_string(ThemeDB.fallback_font, point, text, HORIZONTAL_ALIGNMENT_LEFT, -1, font_size, color)
@@ -45,27 +131,10 @@ func _draw() -> void:
 		return
 	var center := Vector2(width * 0.5, height * 0.56)
 	var scale_value: float = minf(width / 790.0, height / 345.0)
-	for index in range(3):
-		draw_arc(center, (125.0 + index * 35) * scale_value, 0, TAU, 90, Color(0.11, 0.2, 0.24, 0.3), 1, true)
 	var temperature: float = trial.temperature_k
 	var heat_color := Color("62adc2").lerp(Color("df9e67"), clampf((temperature - 245.0) / 90.0, 0.0, 1.0))
-	var a := center + Vector2(-155, 20) * scale_value
-	var b := center + Vector2(55, 85) * scale_value
-	var c := center + Vector2(168, 14) * scale_value
-	var d := center + Vector2(-43, -51) * scale_value
-	var roof := Vector2(0, -122) * scale_value
-	draw_colored_polygon(PackedVector2Array([a, b, c, d]), Color("243f40"))
-	var green: float = clampf(trial.biomass_kg / Model.CONFIG.culture.capacity_kg, 0.0, 1.0)
-	for i in range(8):
-		for j in range(6):
-			var point := a + (b - a) * ((i + 0.5) / 8.0) + (d - a) * ((j + 0.5) / 6.0)
-			draw_circle(point, (2.0 + green * 2.5) * scale_value, Color("554e3a").lerp(Color("85c58e"), green))
-	draw_colored_polygon(PackedVector2Array([a, b, b + roof, a + roof]), Color(heat_color, 0.1))
-	draw_colored_polygon(PackedVector2Array([b, c, c + roof, b + roof]), Color(heat_color, 0.16))
-	draw_colored_polygon(PackedVector2Array([a + roof, b + roof, c + roof, d + roof]), Color("635e50") if trial.canopy else Color(heat_color, 0.14))
-	for segment in [[a, b], [b, c], [c, d], [d, a], [a, a + roof], [b, b + roof], [c, c + roof], [d, d + roof], [a + roof, b + roof], [b + roof, c + roof], [c + roof, d + roof], [d + roof, a + roof]]:
-		draw_line(segment[0], segment[1], Color(heat_color, 0.7), 1.8, true)
-	if trial.filter: draw_line(a + roof + Vector2(0, -6), b + roof + Vector2(0, -6), CYAN, 3, true)
+	var a := center + Vector2(-128, 32) * scale_value
+	var roof := Vector2(0, -105) * scale_value
 	var solar: float = Model.sunlight_w(trial, environment, light)
 	line_arrow(Vector2(132, 55), a + roof + Vector2(45, 5), AMBER)
 	text_at(Vector2(12, 24), "SUNLIGHT", 13, MUTED)
@@ -81,7 +150,7 @@ func _draw() -> void:
 	text_at(Vector2(width - 220, height - 61), phase_name + " / VAPOUR", 13, MUTED)
 	text_at(Vector2(width - 220, height - 37), "%.1f / %.2f kg" % [trial.water_kg, trial.gas.vapor], 18, CYAN)
 	var cover: String = "Regolith canopy" if trial.canopy else ("UV-filtered glazing" if trial.filter else "Standard glazing")
-	text_at(Vector2(12, height - 4), "16 m² enclosure · " + cover, 14, MUTED)
+	text_at(Vector2(12, height - 4), "CUTAWAY  /  16 m² sealed enclosure · " + cover, 14, MUTED)
 
 func draw_history(rect: Rect2) -> void:
 	var points: Array = trial.history
@@ -114,5 +183,11 @@ func draw_history(rect: Rect2) -> void:
 		var ratio: float = float(point.hour - points[0].hour) / maxf(1.0, points[-1].hour - points[0].hour)
 		var value: float = point[metric] * (1000.0 if metric == "biomass" else 1.0)
 		plotted.append(Vector2(rect.position.x + ratio * rect.size.x, rect.position.y + (high - value) / (high - low) * rect.size.y))
+	var area := plotted.duplicate()
+	area.append(Vector2(rect.end.x, rect.end.y))
+	area.append(Vector2(rect.position.x, rect.end.y))
+	draw_colored_polygon(area, Color(CYAN, 0.055))
+	draw_polyline(plotted, Color(CYAN, 0.09), 7, true)
 	draw_polyline(plotted, CYAN, 2, true)
+	draw_circle(plotted[-1], 3.5, CYAN)
 	text_at(rect.position + Vector2(0, rect.size.y + 18), "SITE HOUR %d → %d" % [points[0].hour, points[-1].hour], 14, MUTED)

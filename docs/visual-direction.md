@@ -24,3 +24,21 @@ No Man's Sky is a long-term reference for the appeal of exploring a place, not a
 ## Implemented interface pass
 
 The [interface pass](interface.md) applies this direction across the four current screens: common navigation and time controls, one contextual inspector, a collapsed surface build palette, grouped trial controls and separate history views. The planet and terrain carry the composition. Secondary instructions, long dossiers and utility commands are disclosed when needed. Normal and compact native-engine screenshots are reviewed from CI.
+
+
+## Living worlds graphics pass
+
+This is implemented procedural art in Godot 4.5 Compatibility. Every view is rendered by the game; there are no painted backgrounds pretending to be playable terrain.
+
+- **Orbit:** a larger inspection globe, multiple terrain frequencies, relief shading, ocean reflections, polar frost, independently moving cloud patterns, a shaded night side and a thin illuminated atmosphere. The observed body supplies the seed and the existing temperature, water and biomass values. An airless moon has no atmospheric halo. The geometry remains an illustration, especially for generated prospects whose geography has not been resolved.
+- **Navigation:** a restrained stellar backdrop with cursor parallax, star glows and hover feedback. The selected route carries a moving planning pulse. Catalogue positions and travel distances remain fixed; the pulse does not depict an actual ship in transit.
+- **Surface:** the 80 m working sector sits in continuous seeded geology. Stratified outcrops, scattered debris, surface relief, a sky reflection source, softer fill lighting, distance haze and restrained bloom give depth. Cold surfaces receive patchy frost. Distant scenery has no resource or collision meaning. Pressure gates the haze; lighting is a fixed art setup, not a simulation of local daylight or atmospheric radiative transfer.
+- **Industry:** metre-scale chamfered housings, landing struts, photovoltaic cells, drills, pipework, radiators, service equipment and glazed culture beds replace placeholder blocks. Static geometry is combined by material; loose geology uses eight instanced batches. Selection volumes follow the larger asset silhouettes. Deposits are revealed only after survey and shrink as their remaining resource falls.
+- **Activity:** antenna rotation, drill and pump rotors, radiator fans, fabrication carriages, culture-surface motion and service rovers follow the simulation's operating state. Pausing freezes them. Disabled, unpowered, exhausted or production-blocked equipment stops. Surveying produces a short feedback wave; this is a UI indication, not a physical radar simulation.
+- **Trials:** the same equipment kit appears in a lit 3D cutaway with the front glazing omitted for inspection. The actual experiment remains sealed. Culture coverage, water state, fitted canopy and grow-light visibility follow trial state. A separate full-size graph preserves the sampled measurements and their units.
+
+The animation rate is illustrative and capped at high simulation speeds. Orbital inspection rotation and navigation feedback run independently of the simulation clock. Rovers illustrate service activity and do not yet have collision avoidance or pathfinding. No effects manufacture inventory, advance time, alter physical models or add new fields to saved expeditions.
+
+The renderer deliberately uses material batching, instanced rocks, ordinary depth fog and the Compatibility glow implementation. It does not rely on Forward+-only volumetric fog, SDFGI or screen-space indirect light. See the Godot 4.5 [Environment reference](https://docs.godotengine.org/en/4.5/classes/class_environment.html), [SurfaceTool](https://docs.godotengine.org/en/4.5/classes/class_surfacetool.html) and [MultiMesh](https://docs.godotengine.org/en/4.5/classes/class_multimesh.html).
+
+Validation runs the model suites and all four interactive engine walkthroughs, captures normal and compact windows, and checks that machinery moves while presentation leaves the simulation unchanged. The surface walkthrough also records a short sequence of rendered motion frames and reports draw calls and visible primitives. Those counts are diagnostics; CI software rendering is not a hardware performance benchmark.

@@ -33,6 +33,7 @@ func transit_to(id: String) -> void:
 	await change_view("LocalOrbit")
 
 func capture(filename: String) -> void:
+	await create_timer(0.6).timeout
 	await process_frame
 	await RenderingServer.frame_post_draw
 	var frame := root.get_texture().get_image()

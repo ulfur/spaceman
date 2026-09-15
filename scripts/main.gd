@@ -45,6 +45,14 @@ func button(text: String, callback: Callable, node_name: String = "") -> Button:
 	return UI.button(text, callback, node_name)
 
 func build_interface() -> void:
+	add_child(preload("res://scripts/space_backdrop.gd").new())
+	view = SpaceView.new()
+	add_child(view)
+	view.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	view.offset_left = 28
+	view.offset_top = 132
+	view.offset_right = -410
+	view.offset_bottom = -132
 	var nav := UI.header(self)
 	nav.add_child(button("Star chart", open_prospects, "Prospects"))
 	nav.add_child(UI.label("/  Orbit", 16, TEAL))
@@ -60,11 +68,14 @@ func build_interface() -> void:
 	heading = UI.label("", 36)
 	scene.add_child(heading)
 	subtitle = UI.label("", 16, MUTED, true)
+	subtitle.custom_minimum_size.x = 222
+	subtitle.size_flags_horizontal = Control.SIZE_SHRINK_BEGIN
 	scene.add_child(subtitle)
-	view = SpaceView.new()
-	view.custom_minimum_size = Vector2(240, 220)
-	view.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	scene.add_child(view)
+	var space := Control.new()
+	space.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	space.custom_minimum_size = Vector2(240, 220)
+	space.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	scene.add_child(space)
 	telemetry = UI.label("", 18, TEAL, true)
 	scene.add_child(telemetry)
 	var inspector := UI.inspector(self)
@@ -118,6 +129,8 @@ func refresh() -> void:
 		var known: Dictionary = session.prospects.evidence(body.system)
 		subtitle.text = "LOCAL PROBE  /  Climate and native life unresolved. Globe is a schematic reconstruction."
 		telemetry.text = "IRRADIANCE %.2f–%.2f EARTH  /  GRAVITY %.2f g\nPRESSURE %.2f bar  /  MAGNETIC FIELD %.2f Earth · geometry unresolved" % [known.flux_low, known.flux_high, known.gravity, known.pressure, known.field_earth]
+		body = body.duplicate(true)
+		body.pressure = known.pressure
 	view.show_body(body)
 	refresh_operations(body)
 
