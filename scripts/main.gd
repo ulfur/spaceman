@@ -35,7 +35,7 @@ func _ready() -> void:
 		status.text = loaded.message
 	selected = session.orbit_body if not sim.local_body(session.orbit_body).is_empty() else session.default_body()
 	refresh()
-	Nav.arrive(self, view, view.globe.position + view.globe.size * 0.5)
+	Nav.arrive(self, view)
 
 
 func build_theme() -> void:
@@ -85,6 +85,11 @@ func build_interface() -> void:
 	space.custom_minimum_size = Vector2(240, 220)
 	space.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	scene.add_child(space)
+	var camera_controls := UI.row(scene)
+	camera_controls.add_child(UI.button("Planet", view.frame_body, "FramePlanet"))
+	camera_controls.add_child(UI.button("Moons", view.frame_family, "FrameMoons"))
+	camera_controls.add_child(UI.button("Day side", view.day_side, "DaySide"))
+	camera_controls.add_child(UI.label("Drag to orbit · Scroll / pinch to zoom", 12, MUTED))
 	telemetry = UI.label("", 18, TEAL, true)
 	scene.add_child(telemetry)
 	var inspector := UI.inspector(self)
@@ -95,6 +100,7 @@ func build_interface() -> void:
 	time.add_child(year_label)
 	UI.spacer(time)
 	time.add_child(UI.label("Advance time", 14, MUTED))
+	time.add_child(button("+6 h", func(): session.advance_hours(6); session.save_disk(); refresh(), "WaitHours"))
 	for years in [1, 10, 50]:
 		time.add_child(button("+%d yr" % years, advance_time.bind(years), "Wait%d" % years))
 	status = UI.status(footer)
@@ -263,10 +269,6 @@ func open_surface() -> void:
 
 func _unhandled_key_input(event: InputEvent) -> void:
 	if UI.menu_key(self, event): return
-	if event is InputEventKey and event.pressed and not event.echo and event.keycode == KEY_F11:
-		var fullscreen := DisplayServer.window_get_mode() == DisplayServer.WINDOW_MODE_FULLSCREEN
-		DisplayServer.window_set_mode(DisplayServer.WINDOW_MODE_WINDOWED if fullscreen else DisplayServer.WINDOW_MODE_FULLSCREEN)
-		get_viewport().set_input_as_handled()
 
 func open_prospects() -> void:
 	session.viewed_system = sim.state.system
@@ -284,7 +286,7 @@ func show_journal() -> void:
 	UI.text_dialog(self, "Ship's journal", "\n".join(lines))
 
 func show_help() -> void:
-	UI.text_dialog(self, "Orbit", "Select a local body, then survey or operate it.\n\nStar chart: observe distant systems and plan travel.\nSurface access: choose and manage a landing region.\nTime controls: advance the whole expedition in years.\n\nChanges autosave. Save, load and the journal are in Menu.\nF11 toggles fullscreen.")
+	UI.text_dialog(self, "Orbit", "Select a local body, then survey or operate it.\n\nStar chart: observe distant systems and plan travel.\nSurface access: choose and manage a landing region.\nTime controls: advance the whole expedition in years.\n\nChanges autosave. Save, load and the journal are in Menu.\nFull screen button: Control–Command–F on Mac, Option/Alt–Return, or F11.")
 
 func open_system() -> void:
 	session.viewed_system = sim.state.system

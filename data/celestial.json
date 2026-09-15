@@ -1,0 +1,22 @@
+{
+  "units": "AU, km, solar masses, Earth masses, hours, degrees; epoch is expedition start",
+  "stars": {
+    "eir": {"mass_solar": 0.9, "radius_km": 633087.0, "color": "ffe6bc"},
+    "vesper": {"mass_solar": 0.7, "radius_km": 500904.0, "color": "ffd299"}
+  },
+  "stellar_priors": {
+    "G V": {"mass_solar": 1.0, "radius_km": 695700.0, "color": "fff0d5"},
+    "K V": {"mass_solar": 0.75, "radius_km": 521775.0, "color": "ffd399"},
+    "M V": {"mass_solar": 0.35, "radius_km": 250452.0, "color": "ffad78"}
+  },
+  "bodies": {
+    "eir_iii": {"radius_km": 6371.0, "mass_earth": 1.0, "day_hours": 24.0, "tilt_deg": 23.4, "prime_deg": 50.0},
+    "nacre": {"radius_km": 1737.4, "mass_earth": 0.0123, "locked": true, "tilt_deg": 0.0},
+    "eir_ii": {"radius_km": 5600.0, "mass_earth": 0.7, "day_hours": 38.0, "tilt_deg": 4.0},
+    "eir_iv": {"radius_km": 7020.0, "mass_earth": 1.2, "day_hours": 31.0, "tilt_deg": 17.0},
+    "vesper_a": {"radius_km": 8700.0, "mass_earth": 2.5, "day_hours": 29.0, "tilt_deg": 12.0},
+    "vesper_b": {"radius_km": 2100.0, "mass_earth": 0.02, "locked": true, "tilt_deg": 0.0}
+  },
+  "unmeasured_planet": {"radius_km": 6371.0, "mass_earth": 1.0, "day_hours": 24.0, "tilt_deg": 0.0},
+  "unmeasured_moon": {"radius_km": 1600.0, "mass_earth": 0.01, "locked": true, "tilt_deg": 0.0}
+}

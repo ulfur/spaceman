@@ -18,6 +18,9 @@ static func style(background: Color, border: Color = Color("263943"), padding: i
 	return box
 
 static func install(owner: Control) -> void:
+	if owner.get_script().resource_path in ["res://scripts/surface.gd", "res://scripts/testbeds.gd"]:
+		var universe := owner.get_tree().root.get_node_or_null("Universe")
+		if universe != null: universe.suspend()
 	var skin := Theme.new()
 	skin.default_font_size = 16
 	skin.set_color("font_color", "Label", INK)
@@ -130,6 +133,7 @@ static func status(parent: Node) -> Label:
 	return node
 
 static func menu(owner: Control, header_row: HBoxContainer, entries: Array) -> Control:
+	preload("res://scripts/display_controls.gd").shared(owner).add_button(header_row)
 	var layer := Control.new()
 	layer.name = "ExpeditionMenu"
 	owner.add_child(layer)

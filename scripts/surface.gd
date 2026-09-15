@@ -78,6 +78,7 @@ func build_interface() -> void:
 		var observed: Dictionary = session.expedition.known_body(session.surface_body)
 		visual_context = {"ambient_k": observed.get("temperature", 244.0), "pressure": 0.25 if observed.get("kind", "moon") == "world" else 0.0}
 	world.setup(site.state, visual_context)
+	update_sun()
 	viewport_container.gui_input.connect(terrain_input)
 	var shade := ColorRect.new()
 	shade.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
@@ -234,13 +235,14 @@ func update_preview() -> void:
 		update_detail()
 
 func refresh() -> void:
+	update_sun()
 	var state: Dictionary = site.state
 	var report: Dictionary = site.summary()
 	world.refresh(state)
 	var goods: Dictionary = state.resources
 	inventory.text = "Ore %.1f t    ·    Metal %.1f t    ·    Water %.1f t    ·    Parts %.1f t" % [goods.ore, goods.metal, goods.water, goods.components]
 	power.text = "Power %.1f / %.1f kW" % [report.power_demand, report.power_supply]
-	power.tooltip_text = "%d linked installations · demand / supply" % report.connected_count
+	power.tooltip_text = "%d linked installations · demand / supply. Solar generation still uses the mean exposure budget; day/night storage is a future model." % report.connected_count
 	power.add_theme_color_override("font_color", AMBER if report.power_demand > report.power_supply else CYAN)
 	tool_buttons.land.visible = not state.landed
 	for kind in tool_buttons:
@@ -254,6 +256,10 @@ func update_clock() -> void:
 	if time_label != null and site != null:
 		time_label.text = "Year %d + %d h · %s" % [session.expedition.state.year, session.fractional_hours, "Paused" if speed == 0 else "%d h/s" % speed]
 		time_label.tooltip_text = "Site hour %d. Time advances the entire expedition." % site.state.total_hours
+
+func update_sun() -> void:
+	var mechanics = preload("res://scripts/celestial_mechanics.gd")
+	world.set_sun(mechanics.surface_sun(session, session.surface_body, session.surface_region, session.elapsed_hours()))
 
 func update_detail() -> void:
 	fit_inspector.call_deferred()
@@ -357,7 +363,7 @@ func _input(event: InputEvent) -> void:
 	if UI.menu_key(self, event): return
 	if not event is InputEventKey or not event.pressed or event.echo:
 		return
-	if event.keycode not in [KEY_B, KEY_SPACE, KEY_Q, KEY_E, KEY_ESCAPE, KEY_F11] and not (event.keycode >= KEY_0 and event.keycode <= KEY_9): return
+	if event.keycode not in [KEY_B, KEY_SPACE, KEY_Q, KEY_E, KEY_ESCAPE] and not (event.keycode >= KEY_0 and event.keycode <= KEY_9): return
 	if event.keycode >= KEY_0 and event.keycode <= KEY_9:
 		set_tool(TOOLS[event.keycode - KEY_0])
 	else:
@@ -373,9 +379,6 @@ func _input(event: InputEvent) -> void:
 				else: return_to_orbit()
 			KEY_B:
 				toggle_build()
-			KEY_F11:
-				var fullscreen := DisplayServer.window_get_mode() == DisplayServer.WINDOW_MODE_FULLSCREEN
-				DisplayServer.window_set_mode(DisplayServer.WINDOW_MODE_WINDOWED if fullscreen else DisplayServer.WINDOW_MODE_FULLSCREEN)
 	get_viewport().set_input_as_handled()
 
 func recipe_description(kind: String) -> String:

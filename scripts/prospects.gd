@@ -112,6 +112,8 @@ func evidence(id: String) -> Dictionary:
 	if record.has("monitor") or record.has("probe"):
 		known.activity_band = "HIGH" if world.activity > 1.3 else ("ELEVATED" if world.activity > 0.55 else "LOW")
 	if record.has("probe"):
+		known.radius_earth = world.radius
+		known.mass_earth = world.mass
 		known.gravity = world.gravity
 		known.pressure = world.pressure
 		known.field_earth = world.field_earth

@@ -5,7 +5,7 @@ This milestone turns the view stack into a navigable spatial hierarchy and repla
 ## Play it
 
 - In **Star chart**, double-click a star or choose **Resolve system**. The system map shows planets around a star and moons around their parent planet. Select a planet and **Approach orbit**. Local controls still require Spaceship to be in that system.
-- Survey locally, then **Choose a landing site**. Click the globe to choose coordinates; drag to turn it. Orbital screening estimates compare sunlight, ore and ice. **Reconnoitre this site** opens its terrain. Select the exact seed-module cell on the ground.
+- Survey locally, then **Choose a landing site**. Click the globe to choose coordinates; drag to orbit it. Orbital screening estimates compare sunlight, ore and ice. **Reconnoitre this site** opens its terrain. Select the exact seed-module cell on the ground.
 - Each landed module consumes one stocked module from the ship. Starting site materials are the module payload; construction cannot use them before landing. Selecting or inspecting another region commits no module.
 - **Planet** returns to geographic selection. Existing sites appear as markers and selectable coordinate buttons. Selecting one restores its retained industry and finite deposits. All retained sites advance on the shared expedition clock.
 - On the surface, use **WASD / arrows**, **middle or right drag**, and **wheel / trackpad**. Visible **− / + / Home** controls make the camera recoverable. These work while paused; Q/E rotate.
@@ -23,13 +23,13 @@ Save version 5 retains the selected geographic address, every visited site, cata
 
 ## Motion and approximations
 
-View transitions magnify the previous rendered view around the selected world, while the incoming world settles into place. The new interface remains at its final size. A transition blocks repeated navigation input and does not advance the authoritative clock. Presentation uses a bounded 0.72 s tween, not simulation years.
+The original screenshot-based transitions have been replaced by the [physical space camera](physical-space.md). HUD changes reveal one persistent 3D scene. Camera range interpolates geometrically across AU, kilometres and light years; no controls or captured frames are magnified. Camera inspection never advances the expedition clock.
 
-System orbits are circular, coplanar fits projected obliquely. Planetary periods use Kepler scaling with a spectral-class mass prior; reference orbits are authored. Positions follow expedition time, not presentation frame time. Radial spacing is logarithmically compressed and moon orbits are enlarged, as stated on the map. This is not an N-body integrator or precise ephemeris.
+System orbits are circular, coplanar fits projected obliquely. Planetary periods use Kepler scaling with a spectral-class mass prior; reference orbits are authored. Positions follow expedition time, not presentation frame time. The subsequent [physical space pass](physical-space.md) replaces the compressed map and screenshot transitions: shared 3D spheres use physical radii and AU separation, with labelled points for unresolved bodies. All periods now follow combined parent/body mass. This remains a circular two-body fit, not an N-body integrator.
 
 The galactic image is a schematic density backdrop, not an observed Milky Way catalogue. Individual actionable stars come from actual generated records. Galactic coordinates and travel costs share the same light-year frame. Immense distances are costly under the existing sublight travel model; map access does not grant instant travel.
 
-Latitude affects a labelled annual solar screening proxy and ice priors. It does not model obliquity, seasons, tidally locked illumination patterns, weather or regional heat transport. Globe terrain is a visual reconstruction, not a stitched rendering of the local industrial meshes.
+Latitude affects a labelled annual solar screening proxy and ice priors. The physical space renderer now accounts for authored tilt, rotation and synchronous illumination. Those instantaneous directions do not yet drive the mean-exposure industrial budget; weather and regional heat transport remain unmodelled. Globe terrain is a visual reconstruction, not a stitched rendering of the local industrial meshes.
 
 ## Verification
 

@@ -21,7 +21,7 @@ Temperature setpoints require Auto; pressure setpoints require the gas regulator
 
 Time remains explicit. Orbit advances years in discrete steps. Surface and trials start paused; **1× / 10× / 50×** mean logical hours per real second. **Space** toggles pause, and opening Menu pauses continuous time. Trials also offer a day/week advance. The shared clock remains visible while inspecting another control tab. Changing tabs, opening the palette or dismissing UI does not advance the expedition.
 
-**Menu** holds secondary actions and contextual help. It opens beside the navigation bar inside the game viewport, keeps keyboard focus inside its actions, blocks clicks reaching the scene behind it, and closes on an outside click or Esc. Save/load and expedition-reset behaviour remain explicit; resetting still requires confirmation. **F11** toggles fullscreen outside menus.
+**Menu** holds secondary actions and contextual help. It opens beside the navigation bar inside the game viewport, keeps keyboard focus inside its actions, blocks clicks reaching the scene behind it, and closes on an outside click or Esc. Save/load and expedition-reset behaviour remain explicit; resetting still requires confirmation. **Full screen** is visible in every workspace. **Control–Command–F**, **Option/Alt–Return** and **F11** toggle the native window, including while a menu is open. Editor-embedded runs explain how to launch a separate window. See [physical space](physical-space.md).
 
 ## Implementation and checks
 

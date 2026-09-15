@@ -14,6 +14,8 @@ He is a braincast of the original commander: a digital mind adapted to life as a
 
 The **interface pass** reorganises these features into a star chart, orbital view, surface workspace and field-trial console with shared navigation and contextual controls. See [screen layout and controls](docs/interface.md).
 
+The **physical space** pass replaces screenshot zooms with a persistent 3D scene, physical body sizes and distances, mass-dependent orbital periods and a shared geographic lighting frame. Inspect planetary families with **Moons**, then return with **Planet**. See [physical space, controls and model limits](docs/physical-space.md).
+
 The broader goal spans a galactic map, star systems, planetary engineering, RTS-style surface industry, and eventually first-person robot embodiment. See [Game direction](docs/vision.md) for that vision and the distinction between current features and future work.
 
 The updated concept is an open-ended expedition simulation: observe distant systems, choose where to travel, develop an industrial plan, and discover the consequences. [Science and simulation](docs/science-and-simulation.md) records scientific constraints and speculative engineering; [Visual direction](docs/visual-direction.md) translates the concept-art direction into runtime goals. The [development roadmap](docs/roadmap.md) sets the order and acceptance tests for playable milestones.
@@ -26,7 +28,7 @@ Open `project.godot` in **Godot 4.5 standard** and press **F6 on `main.tscn`**, 
 godot --path .
 ```
 
-The game starts paused. In orbit, use **+1 / +10 / +50 yr** to advance time. **F11** toggles fullscreen. Saves live in Godot's application data directory as `expedition.json`; old expedition saves migrate to the combined format.
+The game starts paused. In orbit, use **+6 h** or **+1 / +10 / +50 yr** to advance time. Every view has a **Full screen** button; on Mac use **Control–Command–F** or **Option–Return**. If the game is embedded in Godot, stop it and disable **Embed Game on Play**, then run in its own window. Saves live in Godot's application data directory as `expedition.json`; old expedition saves migrate to the combined format.
 
 ### Try the new surface prototype
 
@@ -56,7 +58,7 @@ You begin with enough transit reserves for one round trip even without mining. F
 
 ## Builds and CI
 
-Pull requests run a headless simulation suite and an actual rendered UI expedition under Xvfb, with screenshots saved as the **expedition-checks** artifact. Successful runs also export **spaceman-web** and **spaceman-linux** artifacts in [GitHub Actions](https://github.com/ulfur/spaceman/actions).
+A native macOS job tests fullscreen and window restoration in all six workspaces. Pull requests also run a headless simulation suite and an actual rendered UI expedition under Xvfb, with screenshots saved as the **expedition-checks** artifact. Successful runs also export **spaceman-web** and **spaceman-linux** artifacts in [GitHub Actions](https://github.com/ulfur/spaceman/actions).
 
 To play the browser artifact, extract it and serve that directory over HTTP:
 
@@ -77,6 +79,7 @@ godot --headless --path . --script res://tests/test_surface.gd
 godot --headless --path . --script res://tests/test_prospects.gd
 godot --headless --path . --script res://tests/test_testbeds.gd
 godot --headless --path . --script res://tests/test_atlas.gd
+godot --headless --path . --script res://tests/test_celestial.gd
 godot --path . --script res://tests/test_ui.gd -- --smoke
 godot --path . --script res://tests/test_surface_ui.gd -- --smoke
 godot --path . --script res://tests/test_prospects_ui.gd -- --smoke

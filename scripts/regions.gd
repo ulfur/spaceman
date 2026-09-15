@@ -27,15 +27,15 @@ func _ready() -> void:
 	body.pressure = context.get("environment", {}).get("pressure", 0.35)
 	globe.show_body(body)
 	selected = session.surface_region
-	globe.focus_region(selected)
 	var nav := UI.header(self)
 	nav.add_child(UI.button("Orbit", open_orbit, "RegionsOrbit"))
 	nav.add_child(UI.label("/  " + body.name + "  /  Surface regions", 16, UI.ACCENT))
 	UI.spacer(nav)
+	nav.add_child(UI.button("Locate site", func(): globe.focus_region(selected), "LocateRegion"))
 	UI.menu(self, nav, [["Save expedition", session.save_disk, "SaveRegions"]])
 	var heading := UI.column(UI.mount(self, Control.PRESET_TOP_LEFT, Vector4(32, 112, 760, 182)), 5)
 	heading.add_child(UI.label("Choose your foothold", 32))
-	heading.add_child(UI.label("Click a location · Drag to turn the planet · Each site keeps its own industry", 15, UI.MUTED))
+	heading.add_child(UI.label("Click a location · Drag to orbit · Sunlight follows geography and expedition time", 15, UI.MUTED))
 	var right := UI.inspector(self)
 	title = UI.label("", 25); right.add_child(title)
 	detail = UI.label("", 16, UI.INK, true); right.add_child(detail)
@@ -48,10 +48,10 @@ func _ready() -> void:
 	approach = UI.button("Reconnoitre this site →", approach_region, "ApproachRegion", true)
 	right.add_child(approach)
 	var footer := UI.footer(self)
-	footer.add_child(UI.label("Regional survey candidates · 80 m working sites · Globe reconstruction and resource estimates are schematic", 13, UI.MUTED))
+	footer.add_child(UI.label("80 m working sites · Terrain between sites is not yet traversable · Procedural surface reconstruction", 13, UI.MUTED))
 	status = UI.status(footer)
 	select_region(selected)
-	Nav.arrive(self, globe, globe.globe.position + globe.globe.size * 0.5)
+	Nav.arrive(self, globe)
 
 func select_region(region: Vector2i) -> void:
 	selected = region

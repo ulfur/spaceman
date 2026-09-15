@@ -12,8 +12,10 @@ var points: Dictionary = {}
 var phase := 0.0
 var hover_id := ""
 var redraw_elapsed := 0.0
+var universe: Node
 
 func _ready() -> void:
+	universe = preload("res://scripts/universe.gd").shared(self)
 	var backdrop := preload("res://scripts/space_backdrop.gd").new()
 	backdrop.show_behind_parent = true
 	add_child(backdrop)
@@ -27,6 +29,7 @@ func _ready() -> void:
 
 
 func _process(delta: float) -> void:
+	if session != null: universe.chart_view(session.chart_center, chart_scale())
 	phase += delta
 	redraw_elapsed += delta
 	if redraw_elapsed >= 1.0 / 30.0:
@@ -34,17 +37,19 @@ func _process(delta: float) -> void:
 		queue_redraw()
 
 func show_catalogue(current: RefCounted, selected_id: String) -> void:
+	var first := session == null
 	session = current
 	selected = selected_id
+	universe.selected = selected
+	universe.chart_view(session.chart_center, chart_scale(), first)
 	queue_redraw()
 
 func star_position(id: String) -> Vector2:
-	var region := chart_region()
-	return region.get_center() + (session.expedition.system_position(id) - session.chart_center) * Vector2(chart_scale(), -chart_scale())
+	return universe.project_body(id)
 
 func chart_region() -> Rect2:
 	# Reserve actual space for the header, side dossiers and instrument dock.
-	return Rect2(38, 220, maxf(300, size.x - 476), maxf(320, size.y - 342))
+	return universe.frame
 
 func chart_scale() -> float:
 	var extent := chart_region().size

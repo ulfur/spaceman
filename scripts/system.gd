@@ -2,6 +2,7 @@ extends Control
 const UI = preload("res://scripts/interface.gd")
 const Session = preload("res://scripts/session.gd")
 const Atlas = preload("res://scripts/world_atlas.gd")
+const Mechanics = preload("res://scripts/celestial_mechanics.gd")
 const Nav = preload("res://scripts/navigation.gd")
 var session = Session.get_shared()
 var map: Control
@@ -29,18 +30,18 @@ func _ready() -> void:
 	nav.add_child(UI.button("Star chart", open_chart, "SystemChart"))
 	nav.add_child(UI.label("/  " + session.expedition.system_name(map.system), 16, UI.ACCENT))
 	UI.spacer(nav)
-	nav.add_child(UI.button("Recenter", func(): map.pan = Vector2.ZERO; map.zoom = 1.0; map.queue_redraw(), "SystemRecenter"))
+	nav.add_child(UI.button("Recenter", map.recenter, "SystemRecenter"))
 	UI.menu(self, nav, [["Save expedition", session.save_disk, "SaveSystem"]])
 	var heading := UI.column(UI.mount(self, Control.PRESET_TOP_LEFT, Vector4(32, 128, 690, 195)), 4)
 	heading.add_child(UI.label("A system of worlds", 32))
-	heading.add_child(UI.label("Select a body · Double-click to approach · Wheel to zoom · Drag to pan", 14, UI.MUTED))
+	heading.add_child(UI.label("Select a body · Double-click to approach · Scroll / pinch to zoom · Drag to orbit", 14, UI.MUTED))
 	var right := UI.inspector(self, 140)
 	title = UI.label("", 28); right.add_child(title)
 	detail = UI.label("", 16, UI.INK, true); right.add_child(detail)
 	UI.spacer(right)
 	enter = UI.button("Approach orbit →", func(): open_body(selected), "ApproachBody", true); right.add_child(enter)
 	var footer := UI.footer(self)
-	footer.add_child(UI.label("Circular orbit fits · Distances compressed; moon orbits enlarged · Camera inspection is free", 13, UI.MUTED))
+	footer.add_child(UI.label("Physical scale · Points mark unresolved bodies · Circular orbit fits · Camera inspection is free", 13, UI.MUTED))
 	status = UI.status(footer)
 	selected = session.orbit_body
 	if not session.expedition.state.bodies.has(selected) or session.expedition.state.bodies[selected].system != map.system:
@@ -52,10 +53,11 @@ func _ready() -> void:
 func select_body(id: String) -> void:
 	selected = id
 	map.selected = id
+	map.universe.selected = id
 	map.queue_redraw()
 	var body: Dictionary = session.expedition.state.bodies[id]
 	var evidence: Dictionary = session.prospects.evidence(map.system)
-	var orbit := Atlas.orbit(body, evidence)
+	var orbit := Mechanics.orbit(session, id)
 	var resolved: bool = map.system == session.expedition.state.system or evidence.is_empty() or evidence.has("orbit_low")
 	title.text = body.name if resolved else "Unresolved candidate"
 	detail.text = "Acquire an orbit fit in the star chart. Remote surface conditions remain unknown."
@@ -66,6 +68,8 @@ func select_body(id: String) -> void:
 			detail.text += "Local control available. Approach to survey this world and choose a surface region."
 		else:
 			detail.text += "Remote orbit reconstruction. Review observations and commit to transit in the star chart to investigate locally."
+		var physical := Mechanics.properties(session, id)
+		detail.text += "\n\nRadius %.0f km%s" % [physical.radius_km, " · assumed until probed" if physical.get("estimated", false) else ""]
 	enter.disabled = map.system != session.expedition.state.system
 	status.text = "Spaceship remains at %s · Year %d" % [session.expedition.system_name(session.expedition.state.system), session.expedition.state.year]
 

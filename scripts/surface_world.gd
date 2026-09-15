@@ -27,6 +27,9 @@ var deposit_nodes: Dictionary = {}
 var survey_wave: MeshInstance3D
 var survey_age := 9.0
 var structure_times: Dictionary = {}
+var sun: DirectionalLight3D
+var sky_material: ProceduralSkyMaterial
+var sky_environment: Environment
 
 func material(color: Color, metallic: float = 0.0, emission: bool = false) -> StandardMaterial3D:
 	var mat := StandardMaterial3D.new()
@@ -70,6 +73,8 @@ func setup(surface_state: Dictionary, context: Dictionary = {}) -> void:
 	var air: float = clampf(float(context.get("pressure", 0.25)), 0.0, 1.0)
 	var sky := Sky.new()
 	var sky_mat := ProceduralSkyMaterial.new()
+	sky_material = sky_mat
+	sky_environment = env
 	sky_mat.sky_top_color = Color("182c3d").lerp(Color("010307"), 1.0 - air)
 	sky_mat.sky_horizon_color = Color("ac9180").lerp(Color("192833"), 1.0 - air)
 	sky_mat.ground_bottom_color = Color("262b30")
@@ -92,7 +97,7 @@ func setup(surface_state: Dictionary, context: Dictionary = {}) -> void:
 	env.glow_hdr_threshold = 1.8
 	environment.environment = env
 	add_child(environment)
-	var sun := DirectionalLight3D.new()
+	sun = DirectionalLight3D.new()
 	sun.rotation_degrees = Vector3(-29, -48, 0)
 	sun.light_color = Color("f4dbb6")
 	sun.light_energy = 1.4
@@ -100,6 +105,7 @@ func setup(surface_state: Dictionary, context: Dictionary = {}) -> void:
 	sun.directional_shadow_max_distance = 140.0
 	sun.shadow_bias = 0.035
 	add_child(sun)
+	if context.has("sun_direction"): set_sun(context.sun_direction)
 	camera = Camera3D.new()
 	camera.fov = 48
 	camera.near = 0.1
@@ -108,6 +114,7 @@ func setup(surface_state: Dictionary, context: Dictionary = {}) -> void:
 	camera.current = true
 	_update_camera()
 	_build_terrain()
+
 	deposits = Node3D.new()
 	add_child(deposits)
 	links = Node3D.new()
@@ -126,6 +133,18 @@ func setup(surface_state: Dictionary, context: Dictionary = {}) -> void:
 	survey_wave.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 	survey_wave.visible = false
 	refresh(surface_state)
+
+func set_sun(toward: Vector3) -> void:
+	if sun == null: return
+	sun.look_at_from_position(Vector3.ZERO, -toward, Vector3.FORWARD if absf(toward.y) > 0.99 else Vector3.UP)
+	sun.light_energy = 1.4 * smoothstep(-0.02, 0.08, toward.y)
+	var daylight := smoothstep(-0.15, 0.15, toward.y)
+	var air: float = clampf(float(visual_context.get("pressure", 0.25)), 0.0, 1.0)
+	sky_material.sky_top_color = Color("010307").lerp(Color("182c3d"), daylight * air)
+	sky_material.sky_horizon_color = Color("030609").lerp(Color("ac9180"), daylight * air)
+	sky_material.ground_horizon_color = sky_material.sky_horizon_color
+	sky_environment.ambient_light_energy = lerpf(0.09, 0.62, daylight)
+	sky_environment.fog_light_energy = lerpf(0.03, 0.65, daylight)
 
 func ground(x: float, z: float) -> float:
 	var ix: int = clampi(int(floor(x / CELL + 10.0)), 0, SIZE - 1)

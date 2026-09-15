@@ -304,10 +304,6 @@ func _unhandled_key_input(event: InputEvent) -> void:
 	if event.keycode == KEY_ESCAPE:
 		open_orbit()
 		get_viewport().set_input_as_handled()
-	elif event.keycode == KEY_F11:
-		var fullscreen := DisplayServer.window_get_mode() == DisplayServer.WINDOW_MODE_FULLSCREEN
-		DisplayServer.window_set_mode(DisplayServer.WINDOW_MODE_WINDOWED if fullscreen else DisplayServer.WINDOW_MODE_FULLSCREEN)
-		get_viewport().set_input_as_handled()
 
 func show_help() -> void:
 	UI.text_dialog(self, "Star chart", "Select a star to compare its route and evidence.\n\nOrbit fit measures received sunlight.\nSpectrum investigates the atmosphere.\nActivity watch samples stellar variability.\nLocal probe unlocks a landing region after arrival.\n\nObservations consume the displayed time and supplies.\nReview transit shows the full commitment before departure.\nEvidence contains dated readings and model limits.\n\nNew expeditions and neighbourhood seeds are in Menu.")
