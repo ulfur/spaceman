@@ -145,13 +145,26 @@ static func menu(owner: Control, header_row: HBoxContainer, entries: Array) -> C
 	mount(layer, Control.PRESET_TOP_RIGHT, Vector4(-300, 76, -24, 100 + entries.size() * 50)).add_child(panel)
 	var items := column(panel, 4)
 	for entry in entries: items.add_child(button(entry[0], _menu_action.bind(layer, entry[1]), entry[2]))
+	for index in range(items.get_child_count()):
+		var item: Button = items.get_child(index)
+		var next: NodePath = item.get_path_to(items.get_child((index + 1) % items.get_child_count()))
+		var previous: NodePath = item.get_path_to(items.get_child(posmod(index - 1, items.get_child_count())))
+		item.focus_next = next
+		item.focus_previous = previous
+		item.focus_neighbor_bottom = next
+		item.focus_neighbor_top = previous
 	layer.gui_input.connect(func(event: InputEvent):
 		if event is InputEventMouseButton and event.pressed: layer.hide()
 	)
-	header_row.add_child(button("Menu", func():
+	var opener := button("Menu", func():
 		owner.move_child(layer, -1)
 		layer.visible = not layer.visible
-	, "Menu"))
+		if layer.visible: items.get_child(0).grab_focus()
+	, "Menu")
+	header_row.add_child(opener)
+	layer.visibility_changed.connect(func():
+		if not layer.visible: opener.grab_focus()
+	)
 	return layer
 
 static func _menu_action(layer: Control, callback: Callable) -> void:

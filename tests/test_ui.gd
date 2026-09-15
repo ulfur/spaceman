@@ -76,6 +76,14 @@ func run() -> void:
 	check(game.get_global_rect().encloses(game.find_child("Navigation", true, false).get_global_rect()), "Shared navigation fits compact window")
 	await press("Menu")
 	check(game.find_child("ExpeditionMenu", true, false).visible, "Secondary commands open in Menu")
+	var menu: Control = game.get_node("ExpeditionMenu")
+	for step in range(7):
+		Driver.key(root, KEY_TAB)
+		var focused: Control = game.get_viewport().gui_get_focus_owner()
+		check(focused != null and menu.is_ancestor_of(focused), "Tab focus stays inside the menu")
+	Driver.key(root, KEY_ESCAPE)
+	check(not menu.visible, "Escape closes the menu")
+	await press("Menu")
 	await press("Journal")
 	await process_frame
 	var journal: AcceptDialog = game.get_node("ReferenceDialog")
