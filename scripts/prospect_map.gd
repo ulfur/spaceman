@@ -3,14 +3,22 @@ signal selected_system(id: String)
 var session: RefCounted
 var selected := "prospect_0"
 var points: Dictionary = {}
-var background: Array[Vector3] = []
+var phase := 0.0
+var hover_id := ""
+var redraw_elapsed := 0.0
 
 func _ready() -> void:
-	var rng := RandomNumberGenerator.new()
-	rng.seed = 913
-	for index in range(280):
-		background.append(Vector3(rng.randf(), rng.randf(), rng.randf()))
+	var backdrop := preload("res://scripts/space_backdrop.gd").new()
+	backdrop.show_behind_parent = true
+	add_child(backdrop)
 	resized.connect(queue_redraw)
+
+func _process(delta: float) -> void:
+	phase += delta
+	redraw_elapsed += delta
+	if redraw_elapsed >= 1.0 / 30.0:
+		redraw_elapsed = 0.0
+		queue_redraw()
 
 func show_catalogue(current: RefCounted, selected_id: String) -> void:
 	session = current
@@ -30,9 +38,6 @@ func chart_scale() -> float:
 	return minf(extent.x * 0.078, extent.y * 0.085)
 
 func _draw() -> void:
-	draw_rect(Rect2(Vector2.ZERO, size), Color("080f17"))
-	for star in background:
-		draw_circle(Vector2(star.x, star.y) * size, 0.4 + star.z, Color(0.65, 0.79, 0.9, 0.1 + star.z * 0.23))
 	if session == null:
 		return
 	var font := ThemeDB.fallback_font
@@ -47,7 +52,12 @@ func _draw() -> void:
 	var active := star_position(local)
 	if selected != local:
 		var target := star_position(selected)
+		draw_line(active, target, Color(0.76, 0.63, 0.43, 0.12), 8, true)
 		draw_dashed_line(active, target, Color("bb9f70"), 1.5, 8, true)
+		# A route-planning pulse, not a travelling ship or elapsed transit.
+		var cursor := active.lerp(target, fmod(phase * 0.15, 1.0))
+		draw_circle(cursor, 5, Color(0.9, 0.75, 0.5, 0.16))
+		draw_circle(cursor, 2, Color("f6d49a"))
 		var quote: Dictionary = session.expedition.travel_quote(selected)
 		draw_string(font, (active + target) * 0.5 + Vector2(10, -9), "%d yr" % quote.years, HORIZONTAL_ALIGNMENT_LEFT, -1, 13, Color("dcc08d"))
 	points.clear()
@@ -59,9 +69,14 @@ func _draw() -> void:
 		var color := Color("ead6a7")
 		if not data.is_empty():
 			color = Color("de9a75") if data.type == "M V" else (Color("edc38b") if data.type == "K V" else Color("d4e5e6"))
-		for ring in range(5, 0, -1):
-			draw_circle(point, ring * 4.0, Color(color, 0.013 * (6 - ring)))
-		draw_circle(point, 4.5, color)
+		for ring in range(12, 0, -1):
+			draw_circle(point, ring * 2.3, Color(color, 0.007 * (13 - ring)))
+		draw_line(point - Vector2(15, 0), point + Vector2(15, 0), Color(color, 0.13), 1, true)
+		draw_line(point - Vector2(0, 15), point + Vector2(0, 15), Color(color, 0.13), 1, true)
+		draw_circle(point, 4.2, color)
+		draw_circle(point - Vector2(0.5, 0.6), 2.0, color.lightened(0.6))
+		if id == hover_id:
+			draw_arc(point, 31, 0, TAU, 64, Color(color, 0.5), 1, true)
 		if id == selected:
 			draw_arc(point, 27, -0.6, 1.1, 30, Color("e2c58e"), 2, true)
 			draw_arc(point, 27, 2.54, 4.24, 30, Color("e2c58e"), 2, true)
@@ -76,6 +91,12 @@ func _draw() -> void:
 			draw_circle(point + Vector2(-11, 11), 2.5, Color("a0d4c9"))
 
 func _gui_input(event: InputEvent) -> void:
+	if event is InputEventMouseMotion:
+		hover_id = ""
+		for id in points:
+			if event.position.distance_to(points[id]) < 28:
+				hover_id = id
+		mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND if hover_id != "" else Control.CURSOR_ARROW
 	if event is InputEventMouseButton and event.pressed and event.button_index == MOUSE_BUTTON_LEFT:
 		for id in points:
 			if event.position.distance_to(points[id]) < 28:

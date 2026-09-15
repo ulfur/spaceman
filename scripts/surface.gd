@@ -71,7 +71,11 @@ func build_interface() -> void:
 	viewport_container.add_child(viewport)
 	world = World.new()
 	viewport.add_child(world)
-	world.setup(site.state)
+	var visual_context: Dictionary = site.environment.duplicate(true)
+	if visual_context.is_empty():
+		var observed: Dictionary = session.expedition.known_body(session.surface_body)
+		visual_context = {"ambient_k": observed.get("temperature", 244.0), "pressure": 0.25 if observed.get("kind", "moon") == "world" else 0.0}
+	world.setup(site.state, visual_context)
 	viewport_container.gui_input.connect(terrain_input)
 	var shade := ColorRect.new()
 	shade.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
@@ -199,6 +203,7 @@ func select_or_build(cell: Vector2i) -> void:
 		status.text = outcome.message
 		notice_until_msec = Time.get_ticks_msec() + 2500
 		if outcome.ok:
+			if tool == "survey": world.pulse_survey(cell)
 			if tool != "survey" and not Input.is_physical_key_pressed(KEY_SHIFT):
 				set_tool("inspect")
 			autosave()

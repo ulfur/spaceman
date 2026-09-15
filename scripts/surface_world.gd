@@ -2,6 +2,8 @@ extends Node3D
 ## Presentation only. Terrain, machinery and service lines reflect model state.
 ## Small rover motion illustrates a working service network; it is not pathfinding.
 const Surface = preload("res://scripts/surface_simulation.gd")
+const Art = preload("res://scripts/industrial_art.gd")
+const Geology = preload("res://scripts/terrain_art.gd")
 const SIZE := 20
 const CELL := 4.0
 var camera: Camera3D
@@ -12,13 +14,19 @@ var links: Node3D
 var marker: Node3D
 var preview: Node3D
 var yaw := 0.62
-var distance := 83.0
-var focus := Vector3(0, 1, 0)
+var distance := 64.0
+var focus := Vector3(4, 1, 2)
 var structures: Dictionary = {}
 var rovers: Array[Node3D] = []
 var animation_time := 0.0
 var motion_rate := 0.0
 var surveyed_count := -1
+var terrain_material: ShaderMaterial
+var visual_context: Dictionary = {}
+var deposit_nodes: Dictionary = {}
+var survey_wave: MeshInstance3D
+var survey_age := 9.0
+var structure_times: Dictionary = {}
 
 func material(color: Color, metallic: float = 0.0, emission: bool = false) -> StandardMaterial3D:
 	var mat := StandardMaterial3D.new()
@@ -54,24 +62,42 @@ func cylinder(parent: Node3D, at: Vector3, radius: float, height: float, mat: Ma
 	mesh.radial_segments = 10
 	return mesh_node(parent, mesh, at, mat)
 
-func setup(surface_state: Dictionary) -> void:
+func setup(surface_state: Dictionary, context: Dictionary = {}) -> void:
 	snapshot = surface_state
+	visual_context = context
 	var environment := WorldEnvironment.new()
 	var env := Environment.new()
-	env.background_mode = Environment.BG_COLOR
-	env.background_color = Color("171d23")
+	var air: float = clampf(float(context.get("pressure", 0.25)), 0.0, 1.0)
+	var sky := Sky.new()
+	var sky_mat := ProceduralSkyMaterial.new()
+	sky_mat.sky_top_color = Color("182c3d").lerp(Color("010307"), 1.0 - air)
+	sky_mat.sky_horizon_color = Color("ac9180").lerp(Color("192833"), 1.0 - air)
+	sky_mat.ground_bottom_color = Color("262b30")
+	sky_mat.ground_horizon_color = sky_mat.sky_horizon_color
+	sky.sky_material = sky_mat
+	env.sky = sky
+	env.background_mode = Environment.BG_SKY
 	env.ambient_light_source = Environment.AMBIENT_SOURCE_COLOR
-	env.ambient_light_color = Color("b5c6d4")
-	env.ambient_light_energy = 0.48
+	env.ambient_light_color = Color("a8bfca")
+	env.ambient_light_energy = 0.62
+	env.reflected_light_source = Environment.REFLECTED_SOURCE_SKY
 	env.tonemap_mode = Environment.TONE_MAPPER_FILMIC
+	env.fog_enabled = air > 0.025
+	env.fog_light_color = Color("82979e")
+	env.fog_light_energy = 0.65
+	env.fog_density = 0.0012 * air
+	env.glow_enabled = true
+	env.glow_intensity = 0.28
+	env.glow_hdr_threshold = 1.8
 	environment.environment = env
 	add_child(environment)
 	var sun := DirectionalLight3D.new()
-	sun.rotation_degrees = Vector3(-32, -35, 0)
-	sun.light_color = Color("ffd4a3")
-	sun.light_energy = 1.75
+	sun.rotation_degrees = Vector3(-29, -48, 0)
+	sun.light_color = Color("f4dbb6")
+	sun.light_energy = 1.4
 	sun.shadow_enabled = true
-	sun.directional_shadow_max_distance = 220.0
+	sun.directional_shadow_max_distance = 140.0
+	sun.shadow_bias = 0.035
 	add_child(sun)
 	camera = Camera3D.new()
 	camera.fov = 48
@@ -91,6 +117,13 @@ func setup(surface_state: Dictionary) -> void:
 	add_child(marker)
 	preview = Node3D.new()
 	add_child(preview)
+	var wave_mat := ShaderMaterial.new()
+	wave_mat.shader = preload("res://shaders/survey_wave.gdshader")
+	var wave_mesh := PlaneMesh.new()
+	wave_mesh.size = Vector2(40, 40)
+	survey_wave = mesh_node(self, wave_mesh, Vector3.ZERO, wave_mat)
+	survey_wave.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	survey_wave.visible = false
 	refresh(surface_state)
 
 func ground(x: float, z: float) -> float:
@@ -122,34 +155,16 @@ func _build_terrain() -> void:
 				st.add_vertex(corners[index])
 				st.add_vertex(corners[(index + 1) % 4])
 	st.generate_normals()
-	var terrain_mat := ShaderMaterial.new()
-	terrain_mat.shader = preload("res://shaders/surface_terrain.gdshader")
-	var terrain := mesh_node(self, st.commit(), Vector3.ZERO, terrain_mat)
+	terrain_material = ShaderMaterial.new()
+	terrain_material.shader = preload("res://shaders/surface_terrain.gdshader")
+	var cold: float = clampf((270.0 - float(visual_context.get("ambient_k", 244))) / 100.0, 0.0, 0.65)
+	terrain_material.set_shader_parameter("frost", cold)
+	var variation: float = fmod(float(snapshot.seed) * 0.618, 1.0)
+	terrain_material.set_shader_parameter("sand_color", Color("8b6749").lerp(Color("756451"), variation))
+	terrain_material.set_shader_parameter("stone_color", Color("485358").lerp(Color("625c58"), variation))
+	var terrain := mesh_node(self, st.commit(), Vector3.ZERO, terrain_material)
 	terrain.name = "Terrain"
-	# Geological apron and distant ridges make the sector a place, not a floating board.
-	var apron := PlaneMesh.new()
-	apron.size = Vector2(340, 340)
-	mesh_node(self, apron, Vector3(0, -0.12, 0), terrain_mat)
-	var rng := RandomNumberGenerator.new()
-	rng.seed = int(snapshot.seed) + 81
-	var rock_mat := material(Color("333e42"))
-	for i in range(155):
-		var angle: float = rng.randf() * TAU
-		var radius: float = rng.randf_range(48.0, 110.0)
-		var rock := SphereMesh.new()
-		rock.radial_segments = 5
-		rock.rings = 3
-		var node := mesh_node(self, rock, Vector3(cos(angle) * radius, 0, sin(angle) * radius), rock_mat)
-		node.scale = Vector3(rng.randf_range(4, 15), rng.randf_range(5, 19), rng.randf_range(5, 14))
-		node.rotation.y = angle
-	for cell in snapshot.cells:
-		if not cell.buildable or rng.randf() < 0.1:
-			var rock := SphereMesh.new()
-			rock.radial_segments = 5
-			rock.rings = 3
-			var node := mesh_node(self, rock, cell_position(cell.x, cell.z) + Vector3(1, 0.15, 1), rock_mat)
-			node.scale = Vector3(1.6, 0.65, 1.2) if cell.buildable else Vector3(2.6, 2.2, 2.1)
-			node.rotation.y = rng.randf() * TAU
+	Geology.dress(self, int(snapshot.seed), terrain_material)
 	# Sparse perimeter survey stakes; no permanent full-screen grid.
 	for index in range(0, SIZE + 1, 2):
 		for side in [-1, 1]:
@@ -171,32 +186,52 @@ func refresh(surface_state: Dictionary) -> void:
 	if count != surveyed_count:
 		surveyed_count = count
 		_clear(deposits)
-		var ore_mat := material(Color("d8aa61"), 0.45)
-		var ice_mat := material(Color("92c4c9"), 0.15)
+		deposit_nodes.clear()
+		var ore_mat := material(Color("8c6043"), 0.35)
+		var ice_mat := material(Color("6d9da5"), 0.2)
 		for cell in snapshot.cells:
-			if not cell.scanned or cell.resource == "":
-				continue
-			var pos := cell_position(cell.x, cell.z)
+			if not cell.scanned or cell.resource == "": continue
+			var cluster := Node3D.new()
+			deposits.add_child(cluster)
+			cluster.position = cell_position(cell.x, cell.z)
+			deposit_nodes[int(cell.z) * SIZE + int(cell.x)] = cluster
 			var mat: Material = ore_mat if cell.resource == "metal" else ice_mat
-			for offset in [Vector3(-0.8, 0.04, -0.7), Vector3(0.6, 0.03, 0.2), Vector3(-0.2, 0.04, 0.9)]:
-				var shard := cylinder(deposits, pos + offset, 0.44, 0.13, mat, 0.24)
-				shard.rotation_degrees.y = cell.x * 17 + cell.z * 31
+			for i in range(4):
+				var node := Art.mesh(cluster, Geology.rock(int(cell.x) * 31 + int(cell.z) * 19 + i), Vector3(sin(i * 2.4) * 0.9, 0.01, cos(i * 2.4) * 0.8), mat)
+				node.scale = Vector3(0.52, 0.15 + i * 0.05, 0.37)
+				node.rotation.y = cell.x * 0.17 + i
+			Art.bake(cluster)
+	# Outcrops recede with extraction; no unsurveyed resource is drawn.
+	for index in deposit_nodes:
+		var cell: Dictionary = snapshot.cells[index]
+		var amount: float = clampf(cell.remaining / maxf(1.0, cell.initial), 0.0, 1.0)
+		deposit_nodes[index].visible = amount > 0.001
+		deposit_nodes[index].scale = Vector3.ONE * (0.3 + amount * 0.7)
 	for structure in snapshot.structures:
 		var id: int = structure.id
 		if not structures.has(id):
 			var node := make_structure(structure.kind)
 			installations.add_child(node)
 			structures[id] = node
+			structure_times[id] = float(id) * 0.47
 		var node: Node3D = structures[id]
 		node.position = cell_position(structure.x, structure.z)
 		node.scale.y = maxf(0.12, structure.progress)
 		var beacon: MeshInstance3D = node.get_node_or_null("Beacon")
+		var active: bool = is_operating(structure)
 		if beacon != null:
-			beacon.material_override = material(Color("a8deca") if structure.powered and structure.enabled else Color("e18f53"), 0.0, true)
-		if structure.kind == "testbed":
+			var mat: StandardMaterial3D = beacon.material_override
+			var tint := Color("7ad8b8") if active else Color("ce9856")
+			mat.albedo_color = tint
+			mat.emission = tint
+		if structure.kind in ["testbed", "refuge"]:
 			var culture: MeshInstance3D = node.get_node("Culture")
-			culture.material_override = material(Color("57a87d") if structure.trial.biomass_kg > 0.002 else Color("735744"), 0.5)
-			node.get_node("Canopy").visible = structure.trial.canopy
+			var density: float = structure.trial.biomass_kg / 0.1 if structure.kind == "testbed" else structure.culture
+			culture.material_override.set_shader_parameter("density", clampf(density, 0.0, 1.0))
+			node.get_node("GrowLight").visible = active and (structure.kind == "refuge" or structure.trial.get("lamp", false))
+			if structure.kind == "testbed":
+				node.get_node("Canopy").visible = structure.trial.canopy
+				culture.material_override.set_shader_parameter("liquid", 1.0 if structure.trial.temperature_k > 273.15 and structure.trial.water_kg > 0.1 else 0.0)
 	_clear(links)
 	for destination in snapshot.structures:
 		if destination.kind == "seed" or not destination.connected:
@@ -217,81 +252,26 @@ func refresh(surface_state: Dictionary) -> void:
 			cable.look_at(end)
 	if snapshot.landed and rovers.is_empty():
 		for i in range(3):
-			var rover := Node3D.new()
-			block(rover, Vector3(0, 0.45, 0), Vector3(0.7, 0.5, 1.2), material(Color("c4c5b5"), 0.4))
-			for side in [-1, 1]:
-				block(rover, Vector3(side * 0.48, 0.22, 0), Vector3(0.24, 0.36, 1.25), material(Color("242d30")))
-			block(rover, Vector3(0, 0.5, -0.61), Vector3(0.42, 0.12, 0.04), material(Color("b3dbcb"), 0, true))
+			var rover := Art.rover()
 			add_child(rover)
 			rovers.append(rover)
 
 func make_structure(kind: String, ghost: bool = false) -> Node3D:
-	var root := Node3D.new()
-	var ivory := material(Color(0.79, 0.8, 0.73, 0.42) if ghost else Color("c9caba"), 0.35)
-	var dark := material(Color(0.16, 0.22, 0.24, 0.4) if ghost else Color("293a40"), 0.45)
-	var copper := material(Color(0.72, 0.39, 0.19, 0.4) if ghost else Color("b97743"), 0.5)
-	block(root, Vector3(0, 0.12, 0), Vector3(3.25, 0.24, 3.25), dark)
-	match kind:
-		"seed":
-			cylinder(root, Vector3(0, 1.7, 0), 1.25, 2.8, ivory, 0.88)
-			cylinder(root, Vector3(0, 3.2, 0), 0.83, 0.35, copper)
-			for side in [-1, 1]:
-				block(root, Vector3(side * 1.4, 0.7, 0), Vector3(0.35, 1.4, 2.0), dark)
-				block(root, Vector3(side * 1.85, 1.7, 0), Vector3(1.4, 0.12, 2.2), dark)
-			cylinder(root, Vector3(0, 4.1, 0), 0.055, 1.9, copper)
-		"solar":
-			cylinder(root, Vector3(0, 0.85, 0), 0.13, 1.4, ivory)
-			var panel := block(root, Vector3(0, 1.55, 0), Vector3(3.5, 0.12, 2.7), dark)
-			panel.rotation_degrees.x = -23
-			for x in [-1.1, 0.0, 1.1]:
-				var line := block(root, Vector3(x, 1.62, 0), Vector3(0.035, 0.025, 2.7), copper)
-				line.rotation_degrees.x = -23
-		"mine":
-			for side in [-1, 1]:
-				block(root, Vector3(side, 1.9, 0), Vector3(0.23, 3.4, 0.35), copper)
-			block(root, Vector3(0, 3.5, 0), Vector3(2.45, 0.35, 0.8), ivory)
-			cylinder(root, Vector3(0, 1.7, 0), 0.27, 2.8, dark, 0.16)
-			block(root, Vector3(0, 0.5, 1), Vector3(2.4, 0.65, 0.9), ivory)
-		"ice_well":
-			cylinder(root, Vector3(-0.6, 1.1, 0), 0.75, 1.8, ivory)
-			cylinder(root, Vector3(0.8, 0.95, 0.5), 0.44, 1.45, dark)
-			block(root, Vector3(0, 1.65, 0), Vector3(2.5, 0.2, 0.22), copper)
-		"refinery":
-			block(root, Vector3(-0.5, 1.0, 0), Vector3(1.5, 1.6, 2.55), ivory)
-			cylinder(root, Vector3(0.9, 1.7, -0.6), 0.48, 2.95, copper)
-			cylinder(root, Vector3(0.9, 1.2, 0.7), 0.48, 2.0, dark)
-			for z in [-0.8, 0.0, 0.8]:
-				block(root, Vector3(-0.5, 1.9, z), Vector3(1.1, 0.16, 0.13), dark)
-		"fabricator":
-			block(root, Vector3(0, 1.0, 0), Vector3(2.8, 1.6, 2.55), ivory)
-			block(root, Vector3(0, 1.0, 1.3), Vector3(1.6, 1.15, 0.06), dark)
-			block(root, Vector3(0, 1.87, 0), Vector3(2.4, 0.18, 1.2), copper)
-		"refuge":
-			cylinder(root, Vector3(0, 0.6, 0), 1.4, 0.65, ivory)
-			var dome := SphereMesh.new()
-			dome.radius = 1.28
-			dome.height = 2.56
-			var glass := mesh_node(root, dome, Vector3(0, 1.25, 0), material(Color(0.3, 0.61, 0.58, 0.65), 0.1))
-			glass.scale.y = 0.75
-			for side in [-1, 1]:
-				block(root, Vector3(side * 1.32, 0.9, 0), Vector3(0.35, 1.1, 1.8), dark)
-		"testbed":
-			var culture := block(root, Vector3(0, 0.38, 0), Vector3(2.9, 0.2, 2.9), copper)
-			culture.name = "Culture"
-			var glass := material(Color(0.35, 0.66, 0.68, 0.32), 0.12)
-			block(root, Vector3(0, 1.5, 0), Vector3(3.3, 2.2, 3.3), glass)
-			for x in [-1.7, 1.7]:
-				for z in [-1.7, 1.7]:
-					block(root, Vector3(x, 1.55, z), Vector3(0.12, 2.6, 0.12), ivory)
-			block(root, Vector3(0, 2.85, 0), Vector3(3.55, 0.15, 3.55), dark)
-			var canopy := block(root, Vector3(0, 3.12, 0), Vector3(3.6, 0.4, 3.6), material(Color("766957")))
-			canopy.name = "Canopy"
-			canopy.visible = false
-			for z in [-0.8, 0.8]:
-				cylinder(root, Vector3(-1.45, 0.9, z), 0.24, 1.2, copper)
-	var beacon := block(root, Vector3(1.4, 0.65, 1.4), Vector3(0.12, 0.65, 0.12), copper)
-	beacon.name = "Beacon"
-	return root
+	return Art.build(kind, ghost)
+
+func is_operating(structure: Dictionary) -> bool:
+	if not structure.enabled or not structure.connected or not structure.powered or structure.progress < 1.0: return false
+	match structure.kind:
+		"mine", "ice_well": return structure.status.begins_with("Extracting")
+		"refinery", "fabricator": return structure.status.begins_with("Refining") or structure.status.begins_with("Fabricating")
+		"testbed": return structure.trial.operating
+		"refuge": return structure.status != "Life support starved"
+	return true
+
+func pulse_survey(cell: Vector2i) -> void:
+	survey_age = 0.0
+	survey_wave.position = cell_position(cell.x, cell.y) + Vector3(0, 1.9, 0)
+	survey_wave.visible = true
 
 func outline(parent: Node3D, color: Color) -> void:
 	var mat := material(color, 0, true)
@@ -330,9 +310,9 @@ func pick_cell(screen_position: Vector2, include_structures: bool = false) -> Ve
 		# Inspect machinery by its volume, not the ground projected behind its roof.
 		var closest: float = origin.distance_to(position_value)
 		for structure in snapshot.structures:
-			var height: float = 4.8 if structure.kind == "seed" else (3.8 if structure.kind == "mine" else 2.7)
+			var height: float = 4.8 if structure.kind == "seed" else (3.8 if structure.kind == "mine" else 3.3)
 			height *= maxf(0.12, structure.progress)
-			var bounds := AABB(cell_position(structure.x, structure.z) - Vector3(1.7, 0, 1.7), Vector3(3.4, height, 3.4))
+			var bounds := AABB(cell_position(structure.x, structure.z) - Vector3(1.83, 0, 1.83), Vector3(3.66, height, 3.66))
 			var hit: Variant = bounds.intersects_ray(origin, direction)
 			if hit is Vector3 and origin.distance_to(hit) < closest:
 				closest = origin.distance_to(hit)
@@ -361,12 +341,27 @@ func pan_camera(delta: Vector2) -> void:
 
 func _process(delta: float) -> void:
 	animation_time += delta * motion_rate
+	if survey_wave != null and survey_age < 2.0:
+		survey_age += delta
+		survey_wave.material_override.set_shader_parameter("age", survey_age)
+		survey_wave.visible = survey_age < 2.0
+	for structure in snapshot.get("structures", []):
+		if not structures.has(structure.id) or not is_operating(structure): continue
+		structure_times[structure.id] += delta * motion_rate
+		var t: float = structure_times[structure.id]
+		var node: Node3D = structures[structure.id]
+		var rotor: Node3D = node.get_node_or_null("Rotor")
+		if rotor != null: rotor.rotation.y = t * (0.3 if structure.kind == "seed" else 2.2)
+		var carriage: Node3D = node.get_node_or_null("Carriage")
+		if carriage != null: carriage.position.x = sin(t * 1.9) * 0.86
+		var culture: MeshInstance3D = node.get_node_or_null("Culture")
+		if culture != null: culture.material_override.set_shader_parameter("phase", t)
 	if snapshot.is_empty() or snapshot.structures.is_empty():
 		return
 	var hub: Dictionary = snapshot.structures[0]
 	var targets: Array = []
 	for structure in snapshot.structures:
-		if structure.kind != "seed" and structure.connected and structure.powered and structure.enabled:
+		if structure.kind != "seed" and is_operating(structure):
 			targets.append(structure)
 	for index in range(rovers.size()):
 		var rover: Node3D = rovers[index]
