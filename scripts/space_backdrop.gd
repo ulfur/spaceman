@@ -15,6 +15,9 @@ func update_aspect() -> void:
 	shader_material.set_shader_parameter("aspect", size.x / maxf(1.0, size.y))
 
 func _process(delta: float) -> void:
+	var universe := get_tree().root.get_node_or_null("Universe")
+	visible = universe == null or not universe.active
+	if not visible: return
 	var target := (get_local_mouse_position() / size.max(Vector2.ONE) - Vector2(0.5, 0.5)).clamp(Vector2(-1, -1), Vector2.ONE)
 	drift = drift.lerp(target, 1.0 - exp(-delta * 2.0))
 	shader_material.set_shader_parameter("drift", drift)

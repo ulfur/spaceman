@@ -23,10 +23,13 @@ func capture(filename: String) -> void:
 	await RenderingServer.frame_post_draw
 	check(root.get_texture().get_image().save_png("res://build/" + filename) == OK, "Capture " + filename)
 func transition() -> void:
-	check(Nav.busy, "Navigation begins an animated camera transition")
-	for i in range(16):
+	check(Nav.busy, "Navigation begins a HUD handoff")
+	var frames := 0
+	while Nav.busy or frames < 5:
 		await capture("zoom-%02d.png" % movie_frame)
 		movie_frame += 1
+		frames += 1
+		if frames > 100: break
 	await arrived()
 
 func run() -> void:
@@ -42,19 +45,32 @@ func run() -> void:
 	await transition()
 	check(game.name == "System", "Chart resolves a system map")
 	check(session.save_json() == unchanged, "Camera approach does not change physical expedition")
+	var universe := root.get_node("Universe")
+	var body_instance: int = universe.meshes.eir_iii.get_instance_id()
 	var planet: Vector2 = game.map.body_position("eir_iii")
 	var moon: Vector2 = game.map.body_position("nacre")
-	check(planet.distance_to(moon) < 40 and planet.distance_to(game.map.centre()) > 60, "Moon appears near its parent, separated from the star")
+	check(planet.distance_to(moon) < 2 and planet.distance_to(game.map.centre()) > 60, "At physical system scale the moon is unresolved beside its parent")
 	Driver.point(root, game.map.get_global_transform_with_canvas() * planet)
 	check(game.selected == "eir_iii", "Planet can be selected on its orbit")
 	await capture("24-system-map.png")
 	await click("ApproachBody")
 	await transition()
 	check(game.name == "Spaceman" and game.selected == "eir_iii", "Approach retains the selected planet")
+	check(universe.meshes.eir_iii.get_instance_id() == body_instance, "Approach uses the same physical world mesh")
+	await click("FrameMoons")
+	while universe.moving(): await process_frame
+	check(universe.project_body("eir_iii").distance_to(universe.project_body("nacre")) > 30, "Approaching the family resolves the real lunar separation")
+	await capture("31-planet-and-moon.png")
+	await click("FramePlanet")
+	while universe.moving(): await process_frame
 	await click("Action_survey")
+	var pose: Transform3D = universe.meshes.eir_iii.transform
+	var camera_pose: Vector3 = universe.direction
 	await click("Surface")
 	await transition()
 	check(game.name == "Regions", "Planet approach exposes geographic selection")
+	check(universe.meshes.eir_iii.get_instance_id() == body_instance and universe.meshes.eir_iii.transform.is_equal_approx(pose), "Region overlay retains the planet without a replacement or rotation reset")
+	check(universe.direction.is_equal_approx(camera_pose), "Region overlay preserves the inspection camera")
 	var region := Vector2i(48, 15)
 	var projected: Vector3 = game.globe.project(region)
 	Driver.point(root, game.globe.get_global_transform_with_canvas() * Vector2(projected.x, projected.y))
@@ -66,6 +82,8 @@ func run() -> void:
 	check(game.name == "Surface" and session.surface_region == region, "Surface uses the chosen geographic address")
 	var first_address: String = session.current_address()
 	var first = game.site
+	var expected_sun := preload("res://scripts/celestial_mechanics.gd").surface_sun(session, session.surface_body, region, session.elapsed_hours())
+	check(game.world.sun.basis.z.is_equal_approx(expected_sun), "Ground lighting agrees with the selected planetary coordinates")
 	var screen: Vector2 = game.world.camera.unproject_position(game.world.cell_position(10, 10))
 	Driver.point(root, game.viewport_container.get_global_transform_with_canvas() * screen)
 	check(first.state.landed and session.expedition.state.ship.modules == 1, "Chosen site receives the actual stocked ship module")

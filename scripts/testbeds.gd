@@ -306,13 +306,10 @@ func _process(delta: float) -> void:
 func _input(event: InputEvent) -> void:
 	if UI.menu_key(self, event): return
 	if not event is InputEventKey or not event.pressed or event.echo: return
-	if event.keycode not in [KEY_ESCAPE, KEY_SPACE, KEY_F11]: return
+	if event.keycode not in [KEY_ESCAPE, KEY_SPACE]: return
 	match event.keycode:
 		KEY_ESCAPE: open_surface()
 		KEY_SPACE: set_speed(1 if speed == 0 else 0)
-		KEY_F11:
-			var fullscreen := DisplayServer.window_get_mode() == DisplayServer.WINDOW_MODE_FULLSCREEN
-			DisplayServer.window_set_mode(DisplayServer.WINDOW_MODE_WINDOWED if fullscreen else DisplayServer.WINDOW_MODE_FULLSCREEN)
 	get_viewport().set_input_as_handled()
 
 func select_controls(index: int) -> void:

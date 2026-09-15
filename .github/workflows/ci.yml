@@ -109,6 +109,19 @@ jobs:
         run: |
           xvfb-run -a godot --path . --rendering-method gl_compatibility --audio-driver Dummy --fixed-fps 20 --script res://tests/test_navigation_ui.gd -- --smoke 2>&1 | tee build/navigation-ui.log
           if grep -E 'SCRIPT ERROR|Parse Error|ERROR:|FAIL:' build/navigation-ui.log; then exit 1; fi
+      - name: Physical coordinates and display controls
+        if: ${{ !cancelled() }}
+        run: |
+          godot --headless --path . --script res://tests/test_celestial.gd 2>&1 | tee build/celestial.log
+          if grep -E 'SCRIPT ERROR|Parse Error|ERROR:|FAIL:' build/celestial.log; then exit 1; fi
+      - name: Native fullscreen across every workspace
+        if: ${{ !cancelled() }}
+        timeout-minutes: 3
+        env:
+          LIBGL_ALWAYS_SOFTWARE: "1"
+        run: |
+          xvfb-run -a godot --path . --rendering-method gl_compatibility --audio-driver Dummy --script res://tests/test_display_ui.gd -- --smoke 2>&1 | tee build/display-ui.log
+          if grep -E 'SCRIPT ERROR|Parse Error|ERROR:|FAIL:' build/display-ui.log; then exit 1; fi
       - name: Preserve visual checks and test logs
         if: always()
         uses: actions/upload-artifact@v4
@@ -140,3 +153,28 @@ jobs:
         with:
           name: spaceman-linux
           path: build/linux/
+
+  macos-display:
+    runs-on: macos-14
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install pinned Godot for macOS
+        run: |
+          mkdir -p "$RUNNER_TEMP/godot"
+          curl --fail --location --retry 3 "https://github.com/godotengine/godot-builds/releases/download/${GODOT_VERSION}-stable/Godot_v${GODOT_VERSION}-stable_macos.universal.zip" -o "$RUNNER_TEMP/godot/editor.zip"
+          unzip -q "$RUNNER_TEMP/godot/editor.zip" -d "$RUNNER_TEMP/godot"
+          echo "$RUNNER_TEMP/godot/Godot.app/Contents/MacOS" >> "$GITHUB_PATH"
+      - name: Import and exercise the native Mac window
+        run: |
+          mkdir -p build
+          touch build/.gdignore
+          Godot --headless --path . --editor --import 2>&1 | tee build/macos-display.log
+          Godot --path . --rendering-method gl_compatibility --audio-driver Dummy --script res://tests/test_display_ui.gd -- --smoke 2>&1 | tee -a build/macos-display.log
+          if grep -E 'SCRIPT ERROR|Parse Error|ERROR:|FAIL:' build/macos-display.log; then exit 1; fi
+      - name: Preserve Mac display checks
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: spaceman-macos-display-checks
+          path: build/macos-display.log
