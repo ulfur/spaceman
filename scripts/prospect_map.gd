@@ -23,11 +23,11 @@ func star_position(id: String) -> Vector2:
 
 func chart_region() -> Rect2:
 	# Reserve actual space for the header, side dossiers and instrument dock.
-	return Rect2(286, 145, maxf(200, size.x - 606), maxf(200, size.y - 375))
+	return Rect2(38, 220, maxf(300, size.x - 476), maxf(320, size.y - 342))
 
 func chart_scale() -> float:
 	var extent := chart_region().size
-	return minf(extent.x * 0.085, extent.y * 0.094)
+	return minf(extent.x * 0.078, extent.y * 0.085)
 
 func _draw() -> void:
 	draw_rect(Rect2(Vector2.ZERO, size), Color("080f17"))

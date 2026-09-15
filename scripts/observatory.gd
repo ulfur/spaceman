@@ -1,4 +1,5 @@
 extends Control
+const UI = preload("res://scripts/interface.gd")
 const Session = preload("res://scripts/session.gd")
 const Prospects = preload("res://scripts/prospects.gd")
 const Map = preload("res://scripts/prospect_map.gd")
@@ -20,7 +21,11 @@ var provenance: Label
 var observe_buttons: Dictionary = {}
 var depart: Button
 var surface: Button
-var trials: Button
+var overview: VBoxContainer
+var evidence_page: VBoxContainer
+var details_tab := false
+var tabs: Array[Button] = []
+var local_orbit: Button
 var travel_dialog: ConfirmationDialog
 var reset_dialog: ConfirmationDialog
 var seed_input: SpinBox
@@ -53,19 +58,7 @@ func skin(background: Color, border: Color) -> StyleBoxFlat:
 	return style
 
 func button(text: String, callback: Callable, node_name: String) -> Button:
-	var node := Button.new()
-	node.name = node_name
-	node.text = text
-	node.focus_mode = Control.FOCUS_NONE
-	node.add_theme_font_size_override("font_size", 13)
-	node.add_theme_color_override("font_color", INK)
-	node.add_theme_color_override("font_disabled_color", Color("526974"))
-	node.add_theme_stylebox_override("normal", skin(Color("101e27"), Color("39515d")))
-	node.add_theme_stylebox_override("hover", skin(Color("1c333c"), CYAN))
-	node.add_theme_stylebox_override("pressed", skin(Color("233c43"), AMBER))
-	node.add_theme_stylebox_override("disabled", skin(Color("0c151e"), Color("23313b")))
-	node.pressed.connect(callback)
-	return node
+	return UI.button(text, callback, node_name)
 
 func area(preset: int, offsets: Vector4) -> MarginContainer:
 	var node := MarginContainer.new()
@@ -91,75 +84,62 @@ func wrapped(text: String, font_size: int = 14, color: Color = INK) -> Label:
 	return node
 
 func build_interface() -> void:
+	UI.install(self)
 	map = Map.new()
 	map.name = "ProspectMap"
 	map.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	add_child(map)
 	map.selected_system.connect(select_system)
-	var top := stack(area(Control.PRESET_TOP_WIDE, Vector4(28, 24, -28, 110)))
-	var row := HBoxContainer.new()
-	row.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	top.add_child(row)
-	var brand := label("SPACEMAN   /   PROSPECTS", 26)
-	brand.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	row.add_child(brand)
-	row.add_child(button("LOCAL ORBIT  /  ESC", open_orbit, "LocalOrbit"))
-	row.add_child(button("NEW EXPEDITION", request_reset, "NewProspects"))
-	clock = label("", 12, CYAN)
-	top.add_child(clock)
-	resources = label("", 14)
-	top.add_child(resources)
-	var left_scroll := ScrollContainer.new()
-	left_scroll.name = "AssessmentScroll"
-	left_scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
-	area(Control.PRESET_LEFT_WIDE, Vector4(28, 150, 267, -220)).add_child(left_scroll)
-	var left := stack(left_scroll)
-	left.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	left.add_child(label("THE LONG VIEW", 12, AMBER))
-	left.add_child(wrapped("Observe first.\nCommit years later.", 21))
-	left.add_child(wrapped("Select a star. Spend instrument time to investigate its possibilities.", 14, MUTED))
-	left.add_child(label("TRANSIT ESTIMATE", 12, AMBER))
-	route = wrapped("", 15)
-	left.add_child(route)
-	left.add_child(label("ASSESSMENT", 12, AMBER))
-	decision = wrapped("", 14, CYAN)
-	left.add_child(decision)
-	var right := stack(area(Control.PRESET_RIGHT_WIDE, Vector4(-317, 150, -28, -220)))
-	title = label("", 28)
+	var nav := UI.header(self)
+	nav.add_child(UI.label("Star chart", 16, CYAN))
+	UI.spacer(nav)
+	local_orbit = button("Local orbit →", open_orbit, "LocalOrbit")
+	nav.add_child(local_orbit)
+	UI.menu(self, nav, [["Save expedition", save, "SaveChart"], ["New expedition", request_reset, "NewProspects"], ["Map & instruments", show_help, "Help"]])
+	resources = UI.label("", 15, MUTED)
+	UI.mount(self, Control.PRESET_TOP_WIDE, Vector4(28, 87, -28, 118)).add_child(resources)
+	var map_title := UI.column(UI.mount(self, Control.PRESET_TOP_LEFT, Vector4(36, 142, 540, 215)), 5)
+	map_title.add_child(UI.label("Choose your next star", 30))
+	map_title.add_child(UI.label("Select a system to inspect its evidence and route.", 15, MUTED))
+	var right := UI.inspector(self)
+	title = UI.label("", 27)
 	right.add_child(title)
-	var scroll := ScrollContainer.new()
-	scroll.name = "DossierScroll"
-	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
-	scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	right.add_child(scroll)
-	dossier = wrapped("", 14)
-	dossier.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	scroll.add_child(dossier)
-	provenance = wrapped("", 11, MUTED)
-	right.add_child(provenance)
-	surface = button("SURFACE OPERATIONS  /  3D →", open_surface, "ProspectSurface")
-	right.add_child(surface)
-	trials = button("FIELD TRIALS  /  ENGINEERING →", open_trials, "ProspectTrials")
-	right.add_child(trials)
-	var bottom := stack(area(Control.PRESET_BOTTOM_WIDE, Vector4(28, -200, -28, -22)))
-	bottom.add_child(label("OBSERVING PROGRAMMES     /     SHIP TIME AND REACTOR FUEL ARE COMMITTED IMMEDIATELY", 11, MUTED))
-	var tools_row := HBoxContainer.new()
-	tools_row.name = "ObservationTools"
-	tools_row.add_theme_constant_override("separation", 5)
-	bottom.add_child(tools_row)
-	for method in ["photometry", "spectrum", "monitor", "probe"]:
-		var data: Dictionary = Prospects.CONFIG.observations[method]
-		var node := button("%s\n%d h · %.2f fuel%s" % [data.label.to_upper(), data.hours, data.fuel, " · 1 alloy" if data.alloy > 0 else ""], observe.bind(method), "Observe_" + method)
+	var tab_row := UI.row(right)
+	for page in ["Overview", "Evidence"]:
+		var node := button(page, set_tab.bind(page == "Evidence"), "Chart" + page)
 		node.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-		node.custom_minimum_size.y = 62
-		tools_row.add_child(node)
+		tab_row.add_child(node)
+		tabs.append(node)
+	var content := UI.scroll(right, "DossierScroll")
+	overview = UI.column(content)
+	decision = UI.label("", 16, CYAN, true)
+	overview.add_child(decision)
+	var instruments := UI.column(overview, 8)
+	instruments.name = "ObservationTools"
+	for method in ["photometry", "spectrum", "monitor", "probe"]:
+		var node := button("", observe.bind(method), "Observe_" + method)
+		node.alignment = HORIZONTAL_ALIGNMENT_LEFT
+		instruments.add_child(node)
 		observe_buttons[method] = node
-	depart = button("COMMIT TRANSIT →", request_travel, "ProspectDepart")
-	depart.custom_minimum_size.x = 185
-	tools_row.add_child(depart)
-	status = wrapped("A catalogue is not a habitability verdict. Surface resources require a local probe.", 14, CYAN)
-	bottom.add_child(status)
-	bottom.add_child(label("PLANAR NEIGHBOURHOOD · DISTANCES IN LIGHT YEARS    /    PHOTONS CARRY OLD NEWS    /    STARS AND WORLDS ARE SYNTHETIC", 10, MUTED))
+	evidence_page = UI.column(content)
+	dossier = UI.label("", 16, INK, true)
+	evidence_page.add_child(dossier)
+	provenance = UI.label("", 14, MUTED, true)
+	evidence_page.add_child(provenance)
+	right.add_child(HSeparator.new())
+	route = UI.label("", 15, AMBER, true)
+	right.add_child(route)
+	depart = UI.button("Review transit →", request_travel, "ProspectDepart", true)
+	right.add_child(depart)
+	surface = UI.button("Choose a landing site →", open_surface, "ProspectSurface", true)
+	right.add_child(surface)
+	var bottom := UI.footer(self)
+	var time := UI.row(bottom)
+	clock = UI.label("", 16, AMBER)
+	time.add_child(clock)
+	UI.spacer(time)
+	time.add_child(UI.label("Distances in light years · Archived observations", 14, MUTED))
+	status = UI.status(bottom)
 	travel_dialog = ConfirmationDialog.new()
 	travel_dialog.name = "ProspectTransit"
 	travel_dialog.title = "Commit to interstellar transit"
@@ -192,17 +172,23 @@ func select_system(id: String) -> void:
 func refresh() -> void:
 	map.show_catalogue(session, selected)
 	var ship: Dictionary = session.expedition.state.ship
-	clock.text = "BRAINCAST 01   /   YEAR %d + %d h   /   NEIGHBOURHOOD %d   /   CURRENT SYSTEM: %s" % [session.expedition.state.year, session.fractional_hours, session.prospects.state.seed, system_name(session.expedition.state.system)]
-	resources.text = "REACTOR FUEL  %.2f     /     PROPELLANT  %.1f     /     ALLOY  %.1f     /     INTEGRITY  %.1f%%     /     MODULES ABOARD  %d" % [ship.fuel, ship.propellant, ship.alloy, ship.integrity, ship.modules]
+	clock.text = "Year %d + %d h  ·  Paused" % [session.expedition.state.year, session.fractional_hours]
+	local_orbit.text = system_name(session.expedition.state.system) + " orbit →"
+	resources.text = "Fuel %.2f    ·    Propellant %.1f    ·    Alloy %.1f    ·    Hull %.0f%%    ·    Modules %d" % [ship.fuel, ship.propellant, ship.alloy, ship.integrity, ship.modules]
 	var data: Dictionary = session.prospects.evidence(selected)
-	title.text = selected.to_upper() if data.is_empty() else data.planet_name.to_upper()
+	title.text = system_name(selected) if data.is_empty() else data.planet_name
 	for method in observe_buttons:
 		var allowed: Dictionary = session.prospects.can_observe(selected, method, session.expedition.state.system)
 		var cost: Dictionary = Prospects.CONFIG.observations[method]
 		observe_buttons[method].disabled = not allowed.ok or ship.fuel < cost.fuel or ship.alloy < cost.alloy
-		observe_buttons[method].tooltip_text = allowed.message
+		var acquired: bool = not data.is_empty() and data.records.has(method)
+		observe_buttons[method].visible = not data.is_empty() and (method != "probe" or selected == session.expedition.state.system)
+		observe_buttons[method].text = ("✓ " + cost.label + " · acquired") if acquired else ("%s   %d h · %.2f fuel%s" % [cost.label, cost.hours, cost.fuel, " · 1 alloy" if cost.alloy > 0 else ""])
+		observe_buttons[method].add_theme_font_size_override("font_size", 14)
+		observe_buttons[method].tooltip_text = allowed.message if not allowed.ok else "Commits instrument time and supplies immediately."
+		observe_buttons[method].disabled = observe_buttons[method].disabled or acquired
 	surface.visible = not data.is_empty() and session.site_available(selected + "_b")
-	trials.visible = surface.visible
+	surface.text = "Continue surface operations →" if session.sites.has(selected + "_b") and session.sites[selected + "_b"].state.landed else "Choose a landing site →"
 	if data.is_empty():
 		dossier.text = "REFERENCE SYSTEM\n\nThe original expedition route remains available. Enter local orbit to survey its bodies, operate orbital factories or collect supplies."
 		provenance.text = "Authored First Rain scenario."
@@ -222,16 +208,23 @@ func refresh() -> void:
 		else:
 			dossier.text += "GROUND TRUTH  /  UNKNOWN\nPressure, gravity, magnetic field, rotation, deposits and surface dose require local investigation."
 		decision.text = assessment(data)
+		if data.records.has("probe"):
+			decision.text = "Region mapped\n%.1f K ambient · %.3f bar\nSolar yield %.2f× · Ice richness %.2f×\n\nReview the full probe in Evidence, or enter the surface." % [data.ambient_k, data.pressure, data.solar_factor, data.ice_factor]
+			for node in observe_buttons.values(): node.visible = false
 		provenance.text = latest_observation(data)
 	var quote: Dictionary = session.expedition.travel_quote(selected)
 	if selected == session.expedition.state.system:
-		route.text = "LOCAL CONTACT\nNo interstellar transfer required.\nLaunch a probe or enter local orbit."
+		route.text = "In this system · No transit required"
 		depart.disabled = true
 	else:
-		route.text = "%.2f ly  /  %d years\n%.1f fuel  ·  %.1f propellant\n%.1f integrity\n\n" % [quote.distance_ly, quote.years, quote.fuel_cost, quote.propellant_cost, quote.wear]
+		route.text = "%.2f ly · %d years\n%.1f fuel · %.1f propellant · %.1f hull\n" % [quote.distance_ly, quote.years, quote.fuel_cost, quote.propellant_cost, quote.wear]
 		var return_ready: bool = ship.fuel >= quote.fuel_cost * 2 and ship.propellant >= quote.propellant_cost * 2 and ship.integrity - quote.wear > maxf(20, quote.wear)
-		route.text += "Same-route return reserves available." if return_ready else "Return needs resupply or repairs. Plan local industry before committing modules."
+		route.text += "Return reserves available." if return_ready else "Return requires resupply or repairs."
 		depart.disabled = not quote.valid or ship.fuel < quote.fuel_cost or ship.propellant < quote.propellant_cost or ship.integrity <= maxf(20, quote.wear)
+
+	depart.visible = selected != session.expedition.state.system
+	set_tab(details_tab)
+	status.tooltip_text = status.text
 
 func assessment(data: Dictionary) -> String:
 	if not data.has("flux_low"):
@@ -297,11 +290,12 @@ func open_surface() -> void:
 	save()
 	get_tree().change_scene_to_file("res://scenes/surface.tscn")
 
-func open_trials() -> void:
-	if not session.site_available(selected + "_b"): return
-	session.surface_body = selected + "_b"
-	save()
-	get_tree().change_scene_to_file("res://scenes/testbeds.tscn")
+func set_tab(show_evidence: bool) -> void:
+	details_tab = show_evidence
+	overview.visible = not show_evidence
+	evidence_page.visible = show_evidence
+	UI.selected(tabs[0], not show_evidence)
+	UI.selected(tabs[1], show_evidence)
 
 func request_reset() -> void:
 	seed_input.value = session.prospects.state.seed + 1
@@ -324,3 +318,6 @@ func _unhandled_key_input(event: InputEvent) -> void:
 		var fullscreen := DisplayServer.window_get_mode() == DisplayServer.WINDOW_MODE_FULLSCREEN
 		DisplayServer.window_set_mode(DisplayServer.WINDOW_MODE_WINDOWED if fullscreen else DisplayServer.WINDOW_MODE_FULLSCREEN)
 		get_viewport().set_input_as_handled()
+
+func show_help() -> void:
+	UI.text_dialog(self, "Star chart", "Select a star to compare its route and evidence.\n\nOrbit fit measures received sunlight.\nSpectrum investigates the atmosphere.\nActivity watch samples stellar variability.\nLocal probe unlocks a landing region after arrival.\n\nObservations consume the displayed time and supplies.\nReview transit shows the full commitment before departure.\nEvidence contains dated readings and model limits.\n\nNew expeditions and neighbourhood seeds are in Menu.")
