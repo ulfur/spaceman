@@ -309,13 +309,15 @@ func update_contacts() -> void:
 			var reach := minf(half.x / maxf(absf(bearing.x), 0.0001), half.y / maxf(absf(bearing.y), 0.0001))
 			projected = bounds.get_center() + bearing * reach
 			# Separate edge instruments only; physical body positions never move.
-			for attempt in range(8):
+			var preferred := projected
+			var edge_axis := 1 if absf(bearing.x) > absf(bearing.y) else 0
+			for attempt in range(15):
+				var shift := ceilf(attempt * 0.5) * (1.0 if attempt % 2 == 1 else -1.0)
+				projected[edge_axis] = clampf(preferred[edge_axis] + shift * (84 if edge_axis == 1 else 160), bounds.position[edge_axis], bounds.end[edge_axis])
 				var overlap := false
 				for taken in occupied:
 					if taken.has_point(projected): overlap = true
 				if not overlap: break
-				if absf(bearing.x) > absf(bearing.y): projected.y = clampf(projected.y + 44, bounds.position.y, bounds.end.y)
-				else: projected.x = clampf(projected.x + 114, bounds.position.x, bounds.end.x)
 		var radius: float = points[id].radius if on_screen else 0.0
 		contact_hits[id] = {"point": projected, "radius": radius, "edge": not on_screen}
 		if not on_screen:

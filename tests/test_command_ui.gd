@@ -107,6 +107,11 @@ func run() -> void:
 	check(universe.distance > before_survey_zoom, "Survey zoom control works independently of layer selection")
 	await click("LocateRegion"); await settle()
 	await capture("33-command-survey")
+	for id in universe.contact_hits.keys():
+		var hit: Dictionary = universe.contact_hits[id]
+		if not hit.edge: continue
+		point(hit.label_rect.get_center())
+		check(game.contact == id, "Every off-screen label selects its own contact: " + id)
 	check(universe.contact_hits.has("prospect_3_c"), "Survey retains a bearing to the moon")
 	point(universe.contact_hits.prospect_3_c.point)
 	check(game.contact == "prospect_3_c", "Nearby objects are selectable while surveying the surface")

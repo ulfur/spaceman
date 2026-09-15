@@ -43,6 +43,12 @@ func focus_region(region: Vector2i) -> void:
 	universe.focus_region(body_id, region)
 	queue_redraw()
 
+func frame_body() -> void:
+	focus_region(selected_region)
+
+func frame_family() -> void:
+	focus_region(selected_region)
+
 func _draw() -> void:
 	if body_id == "": return
 	var legend := Vector2(24, size.y - 76)

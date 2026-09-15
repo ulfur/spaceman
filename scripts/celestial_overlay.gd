@@ -32,6 +32,9 @@ func _draw() -> void:
 	if universe.show_guides and universe.mode != "regions": draw_orbits()
 	var occupied: Array[Rect2] = []
 	for id in universe.contact_hits:
+		# Survey targets geographic cells. Keep body-level brackets and callouts
+		# for other contacts, rather than duplicating the selected site marker.
+		if universe.mode == "regions" and id == universe.tracking: continue
 		var hit: Dictionary = universe.contact_hits[id]
 		var point: Vector2 = hit.point
 		var selected: bool = id == universe.selected
