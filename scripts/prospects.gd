@@ -3,6 +3,7 @@ extends RefCounted
 ## Units: light years, AU, solar luminosity, Earth mass/radius/gravity, bar, K.
 ## Stellar activity is qualitative and illustrative, not a calibrated dose model.
 static var CONFIG: Dictionary = JSON.parse_string(FileAccess.get_file_as_string("res://data/prospects.json"))
+const Atlas = preload("res://scripts/world_atlas.gd")
 var worlds: Dictionary = {}
 var state: Dictionary
 
@@ -11,7 +12,7 @@ func _init(seed: int = 1701) -> void:
 
 func reset(seed: int = 1701) -> void:
 	worlds.clear()
-	state = {"version": 1, "seed": seed, "records": {}}
+	state = {"version": 2, "seed": seed, "records": {}, "cells": []}
 	var rng := RandomNumberGenerator.new()
 	rng.seed = seed
 	for index in range(CONFIG.names.size()):
@@ -51,8 +52,8 @@ func reset(seed: int = 1701) -> void:
 		worlds[id].infrared_depth = minf(model.infrared_max, model.infrared_base + model.infrared_coefficient * pow(co2_column, model.infrared_exponent))
 		worlds[id].ambient_k = worlds[id].equilibrium_k * pow(1.0 + 0.75 * worlds[id].infrared_depth, 0.25)
 
-func definitions() -> Dictionary:
-	var result := {"systems": [], "bodies": []}
+func definitions(expanded: bool = true) -> Dictionary:
+	var result := {"systems": [], "bodies": Atlas.extra_reference_bodies() if expanded else []}
 	for world in worlds.values():
 		result.systems.append({"id": world.id, "name": world.name.to_upper(), "subtitle": "Uncharted prospect", "x_ly": world.x_ly, "y_ly": world.y_ly, "generated": true})
 		result.bodies.append({"id": world.id + "_b", "system": world.id, "name": world.name + " b", "kind": "world",
@@ -61,7 +62,34 @@ func definitions() -> Dictionary:
 		result.bodies.append({"id": world.id + "_c", "system": world.id, "name": world.name + " c", "kind": "moon",
 			"description": "An industrial companion. Survey its accessible feedstock before committing a module.",
 			"baseline": world.equilibrium_k, "temperature": world.equilibrium_k, "deposit": 350.0 * world.ore_factor, "seed": float(world.terrain_seed + 1), "generated": true})
+		if not expanded: continue
+		var outer: Dictionary = result.bodies[-2].duplicate(true)
+		outer.id = world.id + "_d"
+		outer.name = world.name + " d"
+		outer.seed += 2.0
+		outer.baseline /= sqrt(2.4)
+		outer.temperature = outer.baseline
+		result.bodies.append(outer)
 	return result
+
+func catalogue_cell(cell: Vector2i) -> bool:
+	if cell == Vector2i.ZERO or Vector2(cell).length() * Atlas.CELL_LY > Atlas.GALAXY_RADIUS_LY: return false
+	var key := "%d,%d" % [cell.x, cell.y]
+	if key in state.cells: return false
+	var rng := RandomNumberGenerator.new()
+	rng.seed = int(state.seed) * 1000003 + cell.x * 73856093 + cell.y * 19349663
+	var neighbour = load("res://scripts/prospects.gd").new(rng.randi_range(1, 999999))
+	for index in range(CONFIG.names.size()):
+		var world: Dictionary = neighbour.worlds["prospect_%d" % index].duplicate(true)
+		var id := "field_%d_%d_%d" % [cell.x, cell.y, index]
+		world.id = id
+		world.name = "%s %s.%d" % [CONFIG.names[index], key, index + 1]
+		world.x_ly += cell.x * Atlas.CELL_LY
+		world.y_ly += cell.y * Atlas.CELL_LY
+		worlds[id] = world
+		state.records[id] = {}
+	state.cells.append(key)
+	return true
 
 func evidence(id: String) -> Dictionary:
 	if not worlds.has(id):
@@ -119,8 +147,13 @@ func observe(id: String, method: String, current_system: String, received_hour: 
 
 func surface_context(body_id: String) -> Dictionary:
 	for id in worlds:
-		if body_id == id + "_b":
-			var world: Dictionary = worlds[id]
+		if body_id == id + "_b" or body_id == id + "_d":
+			var world: Dictionary = worlds[id].duplicate(true)
+			if body_id.ends_with("_d"):
+				world.terrain_seed += 2
+				world.flux /= 2.4 * 2.4
+				world.equilibrium_k /= sqrt(2.4)
+				world.ambient_k /= sqrt(2.4)
 			return {"seed": world.terrain_seed, "solar_factor": minf(1.8, world.flux), "ore_factor": world.ore_factor, "ice_factor": world.ice_factor,
 				"environment": {"flux": world.flux, "pressure": world.pressure, "gravity": world.gravity,
 					"field_earth": world.field_earth, "activity": world.activity, "co2_fraction": world.co2_fraction,
@@ -136,9 +169,18 @@ func restore_json(contents: String, now_hour: int) -> Dictionary:
 		return {"ok": false, "message": "Invalid prospect save."}
 	var candidate: Dictionary = parser.data
 	var seed: Variant = candidate.get("seed")
-	if candidate.get("version") != 1 or not (seed is float or seed is int) or not is_finite(float(seed)) or seed != floor(seed) or seed < 1 or seed > 999999 or not candidate.get("records") is Dictionary:
+	if int(candidate.get("version", 0)) not in [1, 2] or not (seed is float or seed is int) or not is_finite(float(seed)) or seed != floor(seed) or seed < 1 or seed > 999999 or not candidate.get("records") is Dictionary:
 		return {"ok": false, "message": "Invalid catalogue seed or record."}
 	var expected = load("res://scripts/prospects.gd").new(int(seed))
+	if int(candidate.version) == 2:
+		if not candidate.get("cells") is Array or candidate.cells.size() > 10000:
+			return {"ok": false, "message": "Invalid catalogue fields."}
+		for key in candidate.cells:
+			if not key is String: return {"ok": false, "message": "Invalid field address."}
+			var xy: PackedStringArray = key.split(",")
+			if xy.size() != 2 or not xy[0].is_valid_int() or not xy[1].is_valid_int(): return {"ok": false, "message": "Invalid field address."}
+			var cell := Vector2i(int(xy[0]), int(xy[1]))
+			if key != "%d,%d" % [cell.x, cell.y] or not expected.catalogue_cell(cell): return {"ok": false, "message": "Duplicate or invalid field."}
 	if candidate.records.size() != expected.worlds.size():
 		return {"ok": false, "message": "Incomplete prospect catalogue."}
 	for id in candidate.records:
@@ -150,13 +192,14 @@ func restore_json(contents: String, now_hour: int) -> Dictionary:
 			var record: Dictionary = candidate.records[id][method]
 			for key in ["received_hour", "source_hour"]:
 				var value: Variant = record.get(key)
-				if not (value is int or value is float) or not is_finite(float(value)) or value != floor(value) or value > now_hour or value < -1000000:
+				if not (value is int or value is float) or not is_finite(float(value)) or value != floor(value) or value > now_hour or value < -1000000000:
 					return {"ok": false, "message": "Invalid observation timestamp."}
 			if record.received_hour < 0 or record.source_hour > record.received_hour:
 				return {"ok": false, "message": "Observation causality violated."}
 			if method == "probe" and record.source_hour != record.received_hour:
 				return {"ok": false, "message": "Invalid local probe timestamp."}
-	reset(int(seed))
+	worlds = expected.worlds
+	state = expected.state
 	state.records = candidate.records.duplicate(true)
 	for record in state.records.values():
 		for observation in record.values():

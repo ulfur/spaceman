@@ -1,4 +1,5 @@
 extends Control
+const Nav = preload("res://scripts/navigation.gd")
 const UI = preload("res://scripts/interface.gd")
 const Session = preload("res://scripts/session.gd")
 const Surface = preload("res://scripts/surface_simulation.gd")
@@ -51,6 +52,7 @@ func _ready() -> void:
 	build_interface()
 	refresh()
 	set_tool(tool)
+	Nav.arrive(self, viewport_container)
 
 
 
@@ -87,10 +89,11 @@ func build_interface() -> void:
 	UI.install(self)
 	var nav := UI.header(self)
 	nav.add_child(button("Star chart", open_chart, "SurfaceChart"))
+	nav.add_child(button("Planet", open_regions, "SurfacePlanet"))
 	nav.add_child(button("Orbit", return_to_orbit, "ReturnOrbit"))
 	nav.add_child(UI.label("/  Surface", 16, CYAN))
 	UI.spacer(nav)
-	nav.add_child(UI.label(session.expedition.state.bodies[session.surface_body].name + " · Sector 01", 16))
+	nav.add_child(UI.label(session.expedition.state.bodies[session.surface_body].name + " · " + Session.Atlas.region_label(session.surface_region), 16))
 	var menu := UI.menu(self, nav, [["Save expedition", save_game, "SaveSurface"], ["Surface controls", show_help, "Help"]])
 	menu.visibility_changed.connect(set_speed.bind(0))
 	var supplies := UI.row(UI.mount(self, Control.PRESET_TOP_WIDE, Vector4(28, 86, -28, 121)))
@@ -99,6 +102,11 @@ func build_interface() -> void:
 	UI.spacer(supplies)
 	power = UI.label("", 16, CYAN)
 	supplies.add_child(power)
+	var camera_controls := UI.row(UI.mount(self, Control.PRESET_BOTTOM_LEFT, Vector4(28, -158, 585, -112)), 6)
+	camera_controls.add_child(button("−", world.zoom_camera.bind(10.0), "CameraOut"))
+	camera_controls.add_child(button("+", world.zoom_camera.bind(-10.0), "CameraIn"))
+	camera_controls.add_child(button("Home", world.reset_camera, "CameraHome"))
+	camera_controls.add_child(UI.label("WASD / drag · Wheel zoom · Q E rotate", 13, MUTED))
 	var inspector := UI.inspector(self, 149, -111)
 	inspector_panel = inspector.get_parent()
 	inspector_panel.size_flags_vertical = Control.SIZE_SHRINK_BEGIN
@@ -176,12 +184,16 @@ func set_tool(kind: String) -> void:
 
 func terrain_input(event: InputEvent) -> void:
 	if event is InputEventMouseMotion:
-		if event.button_mask & MOUSE_BUTTON_MASK_MIDDLE:
+		if event.button_mask & (MOUSE_BUTTON_MASK_MIDDLE | MOUSE_BUTTON_MASK_RIGHT):
 			world.pan_camera(event.relative)
 		var cell: Vector2i = world.pick_cell(event.position, tool == "inspect")
 		if cell != hovered:
 			hovered = cell
 			update_preview()
+	elif event is InputEventMagnifyGesture:
+		world.zoom_camera((1.0 - event.factor) * world.distance)
+	elif event is InputEventPanGesture:
+		world.pan_camera(event.delta * 12.0)
 	elif event is InputEventMouseButton and event.pressed:
 		match event.button_index:
 			MOUSE_BUTTON_WHEEL_UP:
@@ -311,7 +323,8 @@ func return_to_orbit() -> void:
 	set_speed(0)
 	if not autosave():
 		return
-	get_tree().change_scene_to_file("res://scenes/main.tscn")
+	session.orbit_body = session.surface_body
+	Nav.go(self, "res://scenes/main.tscn", size * Vector2(0.38, 0.52), false)
 
 func open_selected_trial() -> void:
 	var structure: Dictionary = site.structure_at(selected.x, selected.y)
@@ -324,6 +337,9 @@ func open_trials() -> void:
 	if autosave(): get_tree().change_scene_to_file("res://scenes/testbeds.tscn")
 
 func _process(delta: float) -> void:
+	if world != null and not Nav.busy and not get_node("ExpeditionMenu").visible:
+		var movement := Vector2(float(Input.is_physical_key_pressed(KEY_D) or Input.is_physical_key_pressed(KEY_RIGHT)) - float(Input.is_physical_key_pressed(KEY_A) or Input.is_physical_key_pressed(KEY_LEFT)), float(Input.is_physical_key_pressed(KEY_S) or Input.is_physical_key_pressed(KEY_DOWN)) - float(Input.is_physical_key_pressed(KEY_W) or Input.is_physical_key_pressed(KEY_UP)))
+		if movement != Vector2.ZERO: world.pan_camera(-movement.normalized() * delta * 380.0)
 	if site == null or speed == 0:
 		return
 	accumulated += delta * speed
@@ -388,7 +404,7 @@ func dismiss_inspector() -> void:
 
 func open_chart() -> void:
 	set_speed(0)
-	if autosave(): get_tree().change_scene_to_file("res://scenes/prospects.tscn")
+	if autosave(): Nav.go(self, "res://scenes/prospects.tscn", size * Vector2(0.38, 0.52), false)
 
 func show_help() -> void:
 	UI.text_dialog(self, "Surface controls", "Click terrain or machinery to inspect it.\nB opens the build palette. Choose equipment, then place it.\nHold Shift to place multiple installations.\nRight-click or Esc cancels placement.\n\n1 surveys ground; 0 returns to inspection.\n2–9 select equipment directly.\nMiddle-drag pans · Wheel zooms · Q / E rotate.\nSpace pauses. Each 1× is one simulated hour per second.\nEsc dismisses the inspector before returning to orbit.\n\nSelect a finished testbed to open its field trial.")
@@ -397,3 +413,7 @@ func fit_inspector() -> void:
 	if not inspector_panel.visible: return
 	var page: VBoxContainer = build_page if build_open else selection_page
 	detail_scroll.custom_minimum_size.y = clampf(page.get_combined_minimum_size().y, 60, maxf(60, size.y - 456))
+
+func open_regions() -> void:
+	set_speed(0)
+	if autosave(): Nav.go(self, "res://scenes/regions.tscn", size * Vector2(0.38, 0.52), false)

@@ -1,6 +1,7 @@
 extends RefCounted
 ## Exercise GUI hit-testing, including layouts that settle after a tab changes.
 static func click(tree: SceneTree, game: Control, id: String) -> bool:
+	await settle(tree)
 	var node: Control = game.find_child(id, true, false)
 	if node == null or not node.is_visible_in_tree() or (node is BaseButton and node.disabled):
 		printerr("FAIL: Control unavailable: " + id)
@@ -36,3 +37,8 @@ static func key(window: Window, code: Key) -> void:
 		event.keycode = code
 		event.pressed = pressed
 		window.push_input(event, true)
+
+static func settle(tree: SceneTree) -> void:
+	while preload("res://scripts/navigation.gd").busy:
+		await tree.process_frame
+	await tree.process_frame

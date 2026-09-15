@@ -155,6 +155,7 @@ func _initialize() -> void:
 	var old = Session.new()
 	var v3: Dictionary = JSON.parse_string(old.save_json())
 	v3.version = 3
+	v3.expedition = JSON.parse_string(Session.Simulation.new(old.prospects.definitions(false)).save_json())
 	check(restored.restore_json(JSON.stringify(v3)).ok and restored.sites.is_empty(), "Prospects version-three expeditions migrate")
 	print("Testbeds: %d checks, %d failures" % [checks, failures])
 	quit(1 if failures else 0)

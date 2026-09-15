@@ -4,6 +4,7 @@ const UI = preload("res://scripts/interface.gd")
 const Simulation = preload("res://scripts/simulation.gd")
 const Session = preload("res://scripts/session.gd")
 const SpaceView = preload("res://scripts/space_view.gd")
+const Nav = preload("res://scripts/navigation.gd")
 const SAVE_PATH := "user://expedition.json"
 const INK := Color("d5e1e6")
 const MUTED := Color("829ba8")
@@ -32,8 +33,9 @@ func _ready() -> void:
 	if not session.initialized:
 		var loaded: Dictionary = session.load_disk()
 		status.text = loaded.message
-	selected = session.default_body()
+	selected = session.orbit_body if not sim.local_body(session.orbit_body).is_empty() else session.default_body()
 	refresh()
+	Nav.arrive(self, view)
 
 
 func build_theme() -> void:
@@ -55,6 +57,7 @@ func build_interface() -> void:
 	view.offset_bottom = -132
 	var nav := UI.header(self)
 	nav.add_child(button("Star chart", open_prospects, "Prospects"))
+	nav.add_child(button("System", open_system, "SystemView"))
 	nav.add_child(UI.label("/  Orbit", 16, TEAL))
 	UI.spacer(nav)
 	nav.add_child(UI.label("Spaceship", 14, MUTED))
@@ -136,6 +139,7 @@ func refresh() -> void:
 
 func select_body(id: String) -> void:
 	selected = id
+	session.orbit_body = id
 	industry_open = false
 	refresh()
 
@@ -154,7 +158,7 @@ func refresh_operations(body: Dictionary) -> void:
 		operations.add_child(UI.label("Survey this body to identify resources and available operations.", 16, MUTED, true))
 		action_button("Survey body →", "survey")
 		return
-	var has_surface: bool = session.sites.has(selected) and session.sites[selected].state.landed
+	var has_surface: bool = session.body_has_industry(selected)
 	if session.site_available(selected):
 		operations.add_child(UI.label("Surface access", 23))
 		operations.add_child(UI.label("Your installation is operating here." if has_surface else "A landing region is mapped. Choose a site for a factory module.", 16, MUTED, true))
@@ -247,8 +251,9 @@ func load_game() -> void:
 func open_surface() -> void:
 	if not session.site_available(selected):
 		return
+	if session.surface_body != selected: session.surface_region = Session.Atlas.DEFAULT_REGION
 	session.surface_body = selected
-	get_tree().change_scene_to_file("res://scenes/surface.tscn")
+	Nav.go(self, "res://scenes/regions.tscn", view.position + view.size * 0.5, true)
 
 func _unhandled_key_input(event: InputEvent) -> void:
 	if UI.menu_key(self, event): return
@@ -258,7 +263,7 @@ func _unhandled_key_input(event: InputEvent) -> void:
 		get_viewport().set_input_as_handled()
 
 func open_prospects() -> void:
-	get_tree().change_scene_to_file("res://scenes/prospects.tscn")
+	Nav.go(self, "res://scenes/prospects.tscn", view.position + view.size * 0.5, false)
 
 
 func toggle_industry() -> void:
@@ -272,3 +277,8 @@ func show_journal() -> void:
 
 func show_help() -> void:
 	UI.text_dialog(self, "Orbit", "Select a local body, then survey or operate it.\n\nStar chart: observe distant systems and plan travel.\nSurface access: choose and manage a landing region.\nTime controls: advance the whole expedition in years.\n\nChanges autosave. Save, load and the journal are in Menu.\nF11 toggles fullscreen.")
+
+func open_system() -> void:
+	session.viewed_system = sim.state.system
+	session.orbit_body = selected
+	Nav.go(self, "res://scenes/system.tscn", view.position + view.size * 0.5, false)

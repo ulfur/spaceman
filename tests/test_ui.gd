@@ -21,6 +21,7 @@ func change_view(id: String) -> void:
 	await process_frame
 	await process_frame
 	game = current_scene
+	await Driver.settle(self)
 
 func transit_to(id: String) -> void:
 	await change_view("Prospects")
@@ -31,6 +32,7 @@ func transit_to(id: String) -> void:
 	game.travel_dialog.hide()
 	game.travel_dialog.confirmed.emit()
 	await change_view("LocalOrbit")
+	await change_view("ApproachBody")
 
 func capture(filename: String) -> void:
 	await create_timer(0.6).timeout

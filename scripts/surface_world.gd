@@ -329,7 +329,7 @@ func orbit_camera(delta: float) -> void:
 	_update_camera()
 
 func zoom_camera(delta: float) -> void:
-	distance = clampf(distance + delta, 24, 128)
+	distance = clampf(distance + delta, 18, 180)
 	_update_camera()
 
 func pan_camera(delta: Vector2) -> void:
@@ -379,3 +379,9 @@ func _process(delta: float) -> void:
 		aim.y = rover.position.y
 		if rover.position.distance_to(aim) > 0.1:
 			rover.look_at(aim)
+
+func reset_camera() -> void:
+	yaw = 0.62
+	distance = 64.0
+	focus = Vector3(4, 1, 2)
+	_update_camera()
